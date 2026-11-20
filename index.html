@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบเฝ้าระวังคุณภาพอากาศและฝุ่นละออง PM 2.5 โรงพยาบาลโพนสวรรค์</title>
+  <meta name="description" content="ระบบรายงานสถานการณ์ฝุ่น PM 2.5 และมาตรการอาชีวอนามัย โรงพยาบาลโพนสวรรค์ จังหวัดนครพนม ข้อมูลจริงแบบเรียลไทม์จาก Air4Thai และฐานข้อมูล Google Sheets" />
+
+  <!-- Inline SVG Favicon ป้องกัน 404 favicon.ico -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230f766e'/%3E%3Cpath d='M28 14h8v14h14v8H36v14h-8V36H14v-8h14z' fill='%23ffffff'/%3E%3C/svg%3E" />
+
+  <!-- Google Fonts: Prompt และ Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Prompt', 'Sarabun', 'sans-serif'],
+            sans: ['Sarabun', 'Prompt', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f2f6f9;
+      color: #0f172a;
+    }
+
+    h1, h2, h3, h4, .font-display {
+      font-family: 'Prompt', 'Sarabun', sans-serif;
+    }
+
+    .hero-blue {
+      background: linear-gradient(135deg, #0369a1 0%, #0284c7 52%, #0ea5e9 100%);
+      box-shadow: 0 14px 32px -10px rgba(2, 132, 199, 0.38);
+    }
+    .hero-green {
+      background: linear-gradient(135deg, #15803d 0%, #16a34a 52%, #22c55e 100%);
+      box-shadow: 0 14px 32px -10px rgba(22, 163, 74, 0.38);
+    }
+    .hero-yellow {
+      background: linear-gradient(135deg, #854d0e 0%, #a16207 48%, #ca8a04 100%);
+      box-shadow: 0 14px 32px -10px rgba(202, 138, 4, 0.38);
+    }
+    .hero-orange {
+      background: linear-gradient(135deg, #9a3412 0%, #c2410c 48%, #ea580c 100%);
+      box-shadow: 0 14px 32px -10px rgba(234, 88, 12, 0.40);
+    }
+    .hero-red {
+      background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 48%, #dc2626 100%);
+      box-shadow: 0 14px 32px -10px rgba(220, 38, 38, 0.42);
+    }
+    .hero-unknown {
+      background: linear-gradient(135deg, #334155 0%, #475569 52%, #64748b 100%);
+      box-shadow: 0 14px 32px -10px rgba(71, 85, 105, 0.32);
+    }
+
+    .header-gradient {
+      background: linear-gradient(125deg, #0d5c57 0%, #0f766e 52%, #0e7490 100%);
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.7; }
+    }
+    .live-dot {
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes spinIcon {
+      to { transform: rotate(360deg); }
+    }
+    .spinning {
+      animation: spinIcon 0.9s linear infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased overflow-x-hidden">
+
+  <!-- ==================== Top Header ==================== -->
+  <header class="header-gradient text-white shadow-lg relative overflow-hidden">
+    <div class="pointer-events-none absolute inset-0" style="background: radial-gradient(circle at 88% 15%, rgba(255,255,255,0.14), transparent 45%);"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 relative z-10">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex items-start sm:items-center gap-3.5 min-w-0">
+          <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0 backdrop-blur-sm" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="13" y="4" width="6" height="24" rx="2" fill="#ffffff"/>
+              <rect x="4" y="13" width="24" height="6" rx="2" fill="#ffffff"/>
+              <circle cx="25.5" cy="7.5" r="3" fill="#5eead4"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div class="font-display text-xs font-medium text-teal-100 tracking-wide mb-0.5">
+              กระทรวงสาธารณสุข • จังหวัดนครพนม
+            </div>
+            <h1 class="font-display text-lg sm:text-xl lg:text-2xl font-semibold leading-snug text-white">
+              ระบบเฝ้าระวังคุณภาพอากาศและฝุ่นละออง PM 2.5 <span class="whitespace-nowrap">โรงพยาบาลโพนสวรรค์</span>
+            </h1>
+            <p class="text-sm text-white/85 mt-0.5">
+              กลุ่มงานอาชีวเวชกรรมและสิ่งแวดล้อม • ข้อมูลจริงจาก Air4Thai (กรมควบคุมมลพิษ) และฐานข้อมูล Google Sheets
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+          <div class="flex-1 sm:flex-none bg-white/15 border border-white/25 rounded-xl px-3.5 py-2 backdrop-blur-sm">
+            <div class="font-display text-[11px] text-teal-100 flex items-center gap-1.5">
+              <span class="live-dot inline-block w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-300/40"></span>
+              <span>อัปเดตล่าสุดจากสถานีตรวจวัด</span>
+            </div>
+            <div id="headerUpdatedAt" class="font-display text-sm font-medium text-white whitespace-nowrap">
+              กำลังเชื่อมต่อข้อมูลจริง...
+            </div>
+          </div>
+
+          <button
+            type="button"
+            id="refreshBtn"
+            class="font-display inline-flex items-center justify-center gap-2 bg-white hover:bg-teal-50 text-teal-900 font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition active:scale-95 disabled:opacity-70 disabled:cursor-wait"
+            aria-label="รีเฟรชข้อมูลเรียลไทม์"
+          >
+            <svg id="refreshIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
+            <span>รีเฟรชเรียลไทม์</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Main Content ==================== -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-5">
+
+    <!-- Fallback Station Notice -->
+    <div id="fallbackBanner" class="hidden items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm" role="status">
+      <svg class="w-5 h-5 shrink-0 mt-0.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div id="fallbackBannerText"></div>
+    </div>
+
+    <!-- Error Alert -->
+    <div id="errorBanner" class="hidden items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 text-sm" role="alert">
+      <svg class="w-5 h-5 shrink-0 mt-0.5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div id="errorBannerText"></div>
+    </div>
+
+    <!-- ==================== Row 1: Hero PM 2.5 Card + Pollutants & Regional Stations ==================== -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch" aria-label="สรุปค่าฝุ่น PM 2.5 และ AQI เรียลไทม์">
+      <!-- Hero Card (7 cols) -->
+      <article id="heroCard" class="lg:col-span-7 hero-blue rounded-3xl p-6 text-white relative overflow-hidden flex flex-col justify-between gap-5 transition-all duration-300">
+        <div class="pointer-events-none absolute -top-24 -right-20 w-72 h-72 rounded-full bg-white/10"></div>
+        <div class="pointer-events-none absolute -bottom-20 -left-10 w-52 h-52 rounded-full bg-white/5"></div>
+
+        <!-- Station & Status Badge -->
+        <div class="relative z-10 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div id="stationName" class="font-display text-base sm:text-lg font-semibold flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>กำลังดึงข้อมูลสถานีจังหวัดนครพนม...</span>
+            </div>
+            <div id="stationArea" class="text-sm text-white/90 mt-0.5">
+              จังหวัดนครพนม • กำลังตรวจสอบพิกัดและระยะทาง
+            </div>
+          </div>
+
+          <span id="statusPillHero" class="font-display inline-flex items-center px-3.5 py-1.5 rounded-full bg-white/20 border border-white/35 backdrop-blur-sm text-sm font-semibold whitespace-nowrap">
+            กำลังประเมินระดับ...
+          </span>
+        </div>
+
+        <!-- Giant PM 2.5 & AQI Metrics -->
+        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+          <div class="sm:col-span-7">
+            <div class="font-display text-xs sm:text-sm font-medium text-white/90">
+              ความเข้มข้นฝุ่นละอองขนาดไม่เกิน 2.5 ไมครอน (PM 2.5)
+            </div>
+            <div class="flex items-baseline gap-2.5 mt-1">
+              <span id="pm25Value" class="font-display text-6xl sm:text-7xl font-bold tracking-tight leading-none animate-pulse">--</span>
+              <span class="font-display text-xl font-medium text-white/90">µg/m³</span>
+            </div>
+            <p id="heroSummary" class="text-sm sm:text-base text-white/95 mt-2.5 leading-relaxed">
+              กำลังดึงข้อมูลจริงจาก Air4Thai ผ่าน Google Apps Script
+            </p>
+          </div>
+
+          <div class="sm:col-span-5 bg-white/15 border border-white/25 rounded-2xl p-4 backdrop-blur-sm">
+            <div class="font-display text-xs font-medium text-white/90">ดัชนีคุณภาพอากาศ (AQI)</div>
+            <div id="aqiValue" class="font-display text-4xl sm:text-5xl font-bold mt-1 leading-none animate-pulse">--</div>
+            <span id="aqiParamBadge" class="font-display inline-flex items-center mt-2.5 px-2.5 py-1 rounded-full bg-slate-900/25 text-xs font-medium text-white">
+              สารมลพิษหลัก: --
+            </span>
+          </div>
+        </div>
+
+        <!-- 5-Level PCD Scale Bar -->
+        <div class="relative z-10 bg-slate-900/20 rounded-2xl px-4 py-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 font-display text-xs text-white/90 mb-2.5">
+            <span>เกณฑ์มาตรฐานกรมควบคุมมลพิษ (PM 2.5 เฉลี่ย 24 ชม.)</span>
+            <span id="pcdScaleCurrentText">-- µg/m³</span>
+          </div>
+          <div class="relative h-2.5 rounded-full grid grid-cols-5" aria-hidden="true">
+            <div class="bg-sky-400 rounded-l-full"></div>
+            <div class="bg-emerald-400"></div>
+            <div class="bg-yellow-400"></div>
+            <div class="bg-orange-400"></div>
+            <div class="bg-red-400 rounded-r-full"></div>
+            <div id="pcdPointer" class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-[3px] border-slate-900 shadow-md transition-all duration-500" style="left: 10%;"></div>
+          </div>
+          <div class="grid grid-cols-5 text-center font-display text-[10px] sm:text-xs text-white/90 mt-2">
+            <span>0–15.0</span>
+            <span>15.1–25.0</span>
+            <span>25.1–37.5</span>
+            <span>37.6–75.0</span>
+            <span>&gt; 75.0</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Side Card: Other Pollutants & Nearby Stations (5 cols) -->
+      <aside class="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col justify-between gap-5">
+        <div>
+          <div class="flex items-center gap-3 mb-3.5">
+            <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="font-display text-base font-semibold text-slate-900">สารมลพิษทางอากาศอื่น ๆ</h2>
+              <p class="text-xs text-slate-500">ค่าตรวจวัดจริงร่วมจากสถานีเดียวกัน</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+              <div class="font-display text-xs font-semibold text-slate-500">PM 10</div>
+              <div id="valPM10" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
+              <div class="text-[11px] text-slate-500">µg/m³</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+              <div class="font-display text-xs font-semibold text-slate-500">NO₂</div>
+              <div id="valNO2" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
+              <div class="text-[11px] text-slate-500">ppb</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+              <div class="font-display text-xs font-semibold text-slate-500">O₃</div>
+              <div id="valO3" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
+              <div class="text-[11px] text-slate-500">ppb</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+              <div class="font-display text-xs font-semibold text-slate-500">CO</div>
+              <div id="valCO" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
+              <div class="text-[11px] text-slate-500">ppm</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+              <div class="font-display text-xs font-semibold text-slate-500">SO₂</div>
+              <div id="valSO2" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
+              <div class="text-[11px] text-slate-500">ppb</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+              <div class="font-display text-xs font-semibold text-slate-500">PM 2.5 AQI</div>
+              <div id="valPM25AQI" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
+              <div class="text-[11px] text-slate-500">ดัชนี</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <h3 class="font-display text-sm font-semibold text-slate-900">สถานีใกล้เคียงโรงพยาบาลโพนสวรรค์</h3>
+            <span class="text-xs text-slate-500">ระบบสำรองอัตโนมัติ</span>
+          </div>
+          <div id="nearbyList" class="space-y-2">
+            <div class="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+              กำลังโหลดข้อมูลสถานีใกล้เคียง...
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ==================== Row 2: Health Advisories & Occupational Health ==================== -->
+    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="คำแนะนำการปฏิบัติตัวและมาตรการอาชีวอนามัย">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 8v8M8 12h8"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">คำแนะนำการปฏิบัติตัวและมาตรการอาชีวอนามัย</h2>
+            <p id="advisorySubtitle" class="text-xs sm:text-sm text-slate-500">ปรับข้อความอัตโนมัติตามระดับสีของค่าฝุ่น PM 2.5 จริง</p>
+          </div>
+        </div>
+        <span id="advisoryLevelBadge" class="font-display text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-full bg-sky-100 text-sky-900">
+          กำลังโหลดระดับ...
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- บุคลากร -->
+        <div id="advCardStaff" class="rounded-2xl border border-slate-200 border-t-4 border-t-sky-600 bg-slate-50/60 p-4 sm:p-5 space-y-3">
+          <div class="flex items-center gap-3">
+            <div id="advIconStaff" class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+                <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
+                <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
+                <circle cx="20" cy="10" r="2"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-display text-sm sm:text-base font-semibold text-slate-900">บุคลากรและเจ้าหน้าที่โรงพยาบาล</h3>
+              <p class="text-xs text-slate-500">มาตรการอาชีวอนามัยและสิ่งแวดล้อม</p>
+            </div>
+          </div>
+          <ul id="advListStaff" class="list-disc pl-5 space-y-1.5 text-sm text-slate-700"></ul>
+        </div>
+
+        <!-- ผู้ป่วยกลุ่มเสี่ยง -->
+        <div id="advCardRisk" class="rounded-2xl border border-slate-200 border-t-4 border-t-sky-600 bg-slate-50/60 p-4 sm:p-5 space-y-3">
+          <div class="flex items-center gap-3">
+            <div id="advIconRisk" class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-display text-sm sm:text-base font-semibold text-slate-900">ผู้ป่วยกลุ่มเสี่ยง</h3>
+              <p class="text-xs text-slate-500">เด็กเล็ก ผู้สูงอายุ หญิงตั้งครรภ์ โรคทางเดินหายใจ/หัวใจ</p>
+            </div>
+          </div>
+          <ul id="advListRisk" class="list-disc pl-5 space-y-1.5 text-sm text-slate-700"></ul>
+        </div>
+
+        <!-- ประชาชนทั่วไป -->
+        <div id="advCardPublic" class="rounded-2xl border border-slate-200 border-t-4 border-t-sky-600 bg-slate-50/60 p-4 sm:p-5 space-y-3">
+          <div class="flex items-center gap-3">
+            <div id="advIconPublic" class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-display text-sm sm:text-base font-semibold text-slate-900">ประชาชนทั่วไป</h3>
+              <p class="text-xs text-slate-500">ผู้รับบริการและประชาชนอำเภอโพนสวรรค์</p>
+            </div>
+          </div>
+          <ul id="advListPublic" class="list-disc pl-5 space-y-1.5 text-sm text-slate-700"></ul>
+        </div>
+      </div>
+
+      <!-- 5-Level PCD Legend -->
+      <div id="legendStrip" class="mt-4 pt-4 border-t border-dashed border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+        <div class="legend-item rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition" data-level="blue">
+          <div class="font-display text-xs font-semibold flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-600"></span>ดีมาก (ฟ้า)</div>
+          <div class="font-display text-xs text-slate-500 mt-0.5">0 – 15.0 µg/m³</div>
+        </div>
+        <div class="legend-item rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition" data-level="green">
+          <div class="font-display text-xs font-semibold flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-600"></span>ดี (เขียว)</div>
+          <div class="font-display text-xs text-slate-500 mt-0.5">15.1 – 25.0 µg/m³</div>
+        </div>
+        <div class="legend-item rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition" data-level="yellow">
+          <div class="font-display text-xs font-semibold flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-yellow-600"></span>ปานกลาง (เหลือง)</div>
+          <div class="font-display text-xs text-slate-500 mt-0.5">25.1 – 37.5 µg/m³</div>
+        </div>
+        <div class="legend-item rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition" data-level="orange">
+          <div class="font-display text-xs font-semibold flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-600"></span>เริ่มกระทบฯ (ส้ม)</div>
+          <div class="font-display text-xs text-slate-500 mt-0.5">37.6 – 75.0 µg/m³</div>
+        </div>
+        <div class="legend-item rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition col-span-2 sm:col-span-1" data-level="red">
+          <div class="font-display text-xs font-semibold flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>มีผลกระทบฯ (แดง)</div>
+          <div class="font-display text-xs text-slate-500 mt-0.5">&gt; 75.0 µg/m³</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Row 3: Real Trend Chart (Daily / Weekly / Monthly / Yearly) ==================== -->
+    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="กราฟแนวโน้มค่า PM 2.5 จากฐานข้อมูลจริง Google Sheets">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">กราฟแนวโน้มค่าฝุ่น PM 2.5 <span class="whitespace-nowrap">จากฐานข้อมูลจริง</span></h2>
+            <p id="chartSubtitle" class="text-xs sm:text-sm text-slate-500">แสดงเฉพาะข้อมูลจริงที่บันทึกสะสมใน Google Sheets (ไม่มีข้อมูลจำลอง)</p>
+          </div>
+        </div>
+
+        <!-- 4 มุมมอง: รายวัน / รายสัปดาห์ / รายเดือน / รายปี -->
+        <div class="grid grid-cols-4 bg-slate-100 p-1 rounded-xl gap-1 w-full md:w-auto" role="tablist" aria-label="เลือกมุมมองกราฟ">
+          <button type="button" class="chart-tab-btn font-display text-xs sm:text-sm font-semibold px-2.5 sm:px-3.5 py-2 rounded-lg bg-white text-teal-800 shadow-sm transition whitespace-nowrap" data-mode="daily" role="tab" aria-selected="true">รายวัน</button>
+          <button type="button" class="chart-tab-btn font-display text-xs sm:text-sm font-medium px-2.5 sm:px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition whitespace-nowrap" data-mode="weekly" role="tab" aria-selected="false">รายสัปดาห์</button>
+          <button type="button" class="chart-tab-btn font-display text-xs sm:text-sm font-medium px-2.5 sm:px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition whitespace-nowrap" data-mode="monthly" role="tab" aria-selected="false">รายเดือน</button>
+          <button type="button" class="chart-tab-btn font-display text-xs sm:text-sm font-medium px-2.5 sm:px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition whitespace-nowrap" data-mode="yearly" role="tab" aria-selected="false">รายปี</button>
+        </div>
+      </div>
+
+      <!-- แถบแจ้งสถานะข้อมูลจริงจาก Google Sheets (โปร่งใส 100% ไม่มีข้อมูลจำลอง) -->
+      <div id="realDataNotice" class="mb-4 flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-teal-50/80 border border-teal-200/80 text-teal-900 text-xs sm:text-sm">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 text-teal-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <div id="realDataNoticeText">กำลังตรวจสอบจำนวนบันทึกข้อมูลจริงจาก Google Sheets...</div>
+      </div>
+
+      <!-- KPI Strip from Real DB -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+          <div class="font-display text-xs text-slate-500">ค่าเฉลี่ยจริงในมุมมองนี้</div>
+          <div id="kpiAvg" class="font-display text-xl font-bold text-slate-900 mt-0.5">--</div>
+          <div id="kpiAvgNote" class="text-xs text-slate-500">µg/m³</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+          <div class="font-display text-xs text-slate-500">ค่าสูงสุดจริงในมุมมองนี้</div>
+          <div id="kpiMax" class="font-display text-xl font-bold text-slate-900 mt-0.5">--</div>
+          <div id="kpiMaxNote" class="text-xs text-slate-500">--</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+          <div class="font-display text-xs text-slate-500">ค่าต่ำสุดจริงในมุมมองนี้</div>
+          <div id="kpiMin" class="font-display text-xl font-bold text-slate-900 mt-0.5">--</div>
+          <div id="kpiMinNote" class="text-xs text-slate-500">--</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+          <div class="font-display text-xs text-slate-500">บันทึกสะสมใน Google Sheets</div>
+          <div id="kpiRecords" class="font-display text-xl font-bold text-teal-700 mt-0.5">--</div>
+          <div id="kpiRecordsNote" class="text-xs text-slate-500">เก็บอัตโนมัติทุก 1 ชม.</div>
+        </div>
+      </div>
+
+      <div class="relative w-full h-[280px] sm:h-[320px]">
+        <canvas id="pm25Chart" aria-label="กราฟแสดงแนวโน้มค่าฝุ่น PM 2.5 จริง"></canvas>
+        <div id="chartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-slate-50/90 rounded-2xl border border-dashed border-slate-300">
+          <p class="font-display text-sm font-semibold text-slate-700">ยังไม่มีข้อมูลประวัติใน Google Sheets สำหรับช่วงเวลานี้</p>
+          <p class="text-xs text-slate-500 mt-1">ระบบตั้งเวลาบันทึกอัตโนมัติทุก 1 ชั่วโมง ข้อมูลจริงจะแสดงทันทีเมื่อมีการบันทึก</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Row 4: Real Historical Data Table from Google Sheets ==================== -->
+    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="ตารางประวัติข้อมูลจริงจาก Google Sheets">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">ตารางประวัติข้อมูลจริงจาก Google Sheets</h2>
+            <p id="tableSubtitle" class="text-xs sm:text-sm text-slate-500">แสดงบันทึกจริงจากชีต Daily_Summary และ Hourly_Logs</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl gap-1" role="tablist" aria-label="เลือกชีตตาราง">
+            <button type="button" class="table-tab-btn font-display text-xs font-semibold px-3 py-1.5 rounded-lg bg-white text-teal-800 shadow-sm" data-sheet="daily" role="tab" aria-selected="true">สรุปรายวัน</button>
+            <button type="button" class="table-tab-btn font-display text-xs font-medium px-3 py-1.5 rounded-lg text-slate-600" data-sheet="hourly" role="tab" aria-selected="false">บันทึกรายชั่วโมง</button>
+          </div>
+          <button type="button" id="exportCsvBtn" class="font-display inline-flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-2 rounded-xl transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>ส่งออก CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="w-full overflow-x-auto rounded-2xl border border-slate-200">
+        <table class="w-full min-w-[680px] text-left border-collapse text-sm">
+          <thead id="historyTableHead" class="bg-slate-50 border-b border-slate-200 font-display text-xs font-semibold text-slate-600"></thead>
+          <tbody id="historyTableBody" class="divide-y divide-slate-100 text-slate-800">
+            <tr>
+              <td colspan="7" class="text-center py-8 text-slate-500">กำลังโหลดข้อมูลจริงจาก Google Sheets...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-slate-500">
+      <div>
+        <strong class="text-slate-700">โรงพยาบาลโพนสวรรค์ จังหวัดนครพนม</strong> • ระบบเฝ้าระวังคุณภาพอากาศและฝุ่น PM 2.5 (ข้อมูลจริง 100% ไม่มีข้อมูลจำลอง)
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span id="dataSourceTag" class="font-display text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">
+          แหล่งข้อมูล: Air4Thai + Google Sheets (GAS)
+        </span>
+        <span class="font-display text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+          รีเฟรชอัตโนมัติทุก 15 นาที
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /**
+     * =========================================================================
+     * Production Google Apps Script Web App URL (Phonsawan_Hospital_PM25_DB)
+     * เชื่อมต่อข้อมูลจริงจาก Air4Thai และฐานข้อมูลจริง Google Sheets โดยตรง
+     * ห้ามสร้างหรือเติมข้อมูลปลอม (Zero Mock/Dummy Data)
+     * =========================================================================
+     */
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwFkbziCL6LdvdbDtXmlvLcZy2nM5lwaKm0aBM_Re8OMGppMlcqbe_I2tI9cq_R5p7_Qg/exec";
+
+    const THAI_MONTHS_SHORT = [
+      "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+      "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+    ];
+    const THAI_WEEKDAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+
+    const PCD_LEVELS = {
+      blue: {
+        level: 1,
+        key: "blue",
+        rangeText: "0 – 15.0 µg/m³",
+        colorName: "สีฟ้า",
+        label: "คุณภาพอากาศดีมาก",
+        hex: "#0284c7",
+        softBg: "#e0f2fe",
+        pillClasses: "bg-sky-100 text-sky-900",
+        summary: "อากาศบริสุทธิ์ เหมาะสำหรับกิจกรรมกลางแจ้งและการให้บริการสาธารณสุขตามปกติ",
+        advisories: {
+          staff: [
+            "ปฏิบัติงานบริการทางการแพทย์ งานภาคสนาม และเวรเปลกลางแจ้งได้ตามปกติ",
+            "ตรวจสอบความพร้อมระบบปรับอากาศ แผ่นกรอง HEPA และคลังหน้ากาก N95 ประจำเดือนตามแผน",
+            "ติดตามรายงานสถานการณ์ PM 2.5 ประจำวันร่วมกับกลุ่มงานอาชีวเวชกรรมอย่างต่อเนื่อง"
+          ],
+          risk: [
+            "สามารถทำกิจกรรมนอกอาคารและออกกำลังกายเบา ๆ ได้ตามปกติ",
+            "พกยาประจำตัว (เช่น ยาพ่นขยายหลอดลม) ติดตัวเมื่อเดินทางนอกบ้าน",
+            "พักผ่อนให้เพียงพอและติดตามค่าฝุ่นประจำวันอย่างสม่ำเสมอ"
+          ],
+          public: [
+            "ทำกิจกรรมกลางแจ้ง ออกกำลังกาย และสัญจรได้ตามปกติ",
+            "เปิดประตู-หน้าต่างเพื่อระบายอากาศภายในบ้านและสถานที่ทำงานได้สะดวก",
+            "ร่วมลดแหล่งกำเนิดฝุ่นในชุมชน งดการเผาขยะและเศษวัสดุทางการเกษตร"
+          ]
+        }
+      },
+      green: {
+        level: 2,
+        key: "green",
+        rangeText: "15.1 – 25.0 µg/m³",
+        colorName: "สีเขียว",
+        label: "คุณภาพอากาศดี",
+        hex: "#16a34a",
+        softBg: "#dcfce7",
+        pillClasses: "bg-emerald-100 text-emerald-900",
+        summary: "คุณภาพอากาศอยู่ในเกณฑ์ดี ดำเนินกิจกรรมได้ตามปกติ กลุ่มเปราะบางควรสังเกตอาการ",
+        advisories: {
+          staff: [
+            "ปฏิบัติหน้าที่ในอาคารและนอกอาคารได้ตามปกติ พร้อมเฝ้าระวังช่วงเช้าและช่วงค่ำ",
+            "เตรียมความพร้อมจุดคัดกรองอาการระบบทางเดินหายใจและคลินิกมลพิษให้พร้อมเปิดใช้",
+            "ดูแลความสะอาดแผ่นกรองเครื่องปรับอากาศและเครื่องฟอกอากาศในหอผู้ป่วยกลุ่มเสี่ยง"
+          ],
+          risk: [
+            "สามารถทำกิจกรรมกลางแจ้งได้ แต่ควรสังเกตอาการผิดปกติ เช่น ไอ แสบคอ หรือหายใจลำบาก",
+            "ผู้ป่วยโรคหืดหรือปอดอุดกั้นเรื้อรังควรหลีกเลี่ยงริมถนนที่มีควันรถหนาแน่น",
+            "รับประทานยาตามแพทย์สั่งสม่ำเสมอและดื่มน้ำสะอาดให้เพียงพอ"
+          ],
+          public: [
+            "ทำกิจกรรมกลางแจ้งและออกกำลังกายได้ตามปกติ",
+            "ผู้ที่ไวต่อฝุ่นควันควรหลีกเลี่ยงพื้นที่การจราจรคับคั่งหรือพื้นที่ก่อสร้าง",
+            "ช่วยกันงดเผาในที่โล่งและตรวจเช็กสภาพเครื่องยนต์ลดควันดำ"
+          ]
+        }
+      },
+      yellow: {
+        level: 3,
+        key: "yellow",
+        rangeText: "25.1 – 37.5 µg/m³",
+        colorName: "สีเหลือง",
+        label: "ปานกลาง",
+        hex: "#ca8a04",
+        softBg: "#fef9c3",
+        pillClasses: "bg-yellow-100 text-yellow-900",
+        summary: "เริ่มมีฝุ่นสะสม กลุ่มเสี่ยงควรลดระยะเวลากิจกรรมกลางแจ้งและสวมหน้ากากป้องกันฝุ่น",
+        advisories: {
+          staff: [
+            "เจ้าหน้าที่ปฏิบัติงานกลางแจ้ง (รปภ., เวรเปล, ซ่อมบำรุง, ออกหน่วย) สวมหน้ากากป้องกัน PM 2.5 และสลับพักในอาคาร",
+            "เปิดใช้งานเครื่องฟอกอากาศในห้องตรวจเด็ก หอผู้ป่วยสูงอายุ และห้องปลอดฝุ่น (Clean Room)",
+            "สื่อสารแจ้งเตือนสถานการณ์ฝุ่นแก่ผู้มารับบริการผ่านจอประชาสัมพันธ์ของโรงพยาบาล"
+          ],
+          risk: [
+            "ลดระยะเวลากิจกรรมกลางแจ้งที่ใช้แรงมาก และสวมหน้ากากป้องกัน PM 2.5 เมื่อออกนอกอาคาร",
+            "ปิดประตู-หน้าต่างให้มิดชิดในช่วงเวลาที่ค่าฝุ่นสูง และใช้ผ้าชุบน้ำเช็ดทำความสะอาดแทนการกวาด",
+            "หากมีอาการไอ หายใจมีเสียงหวีด แน่นหน้าอก หรือระคายเคืองตา ให้รีบพบแพทย์"
+          ],
+          public: [
+            "ลดระยะเวลาทำกิจกรรมกลางแจ้งที่ต้องออกแรงหนักเป็นเวลานาน",
+            "สวมหน้ากากป้องกัน PM 2.5 เมื่ออยู่ในที่โล่งแจ้งหรือริมถนนใหญ่",
+            "ติดตามรายงานค่าฝุ่นรายชั่วโมง โดยเฉพาะช่วงเช้าตรู่และช่วงค่ำ"
+          ]
+        }
+      },
+      orange: {
+        level: 4,
+        key: "orange",
+        rangeText: "37.6 – 75.0 µg/m³",
+        colorName: "สีส้ม",
+        label: "เริ่มมีผลกระทบต่อสุขภาพ",
+        hex: "#ea580c",
+        softBg: "#ffedd5",
+        pillClasses: "bg-orange-100 text-orange-900",
+        summary: "เกินค่ามาตรฐาน (37.5 µg/m³) ต้องสวมหน้ากากป้องกันฝุ่น PM 2.5 และจำกัดกิจกรรมกลางแจ้ง",
+        advisories: {
+          staff: [
+            "บังคับใช้มาตรการอาชีวอนามัยระดับเฝ้าระวังสูง: บุคลากรปฏิบัติงานนอกอาคารต้องสวมหน้ากาก N95 ที่กระชับใบหน้า และจำกัดชั่วโมงสัมผัสฝุ่น",
+            "เปิดบริการห้องปลอดฝุ่น (Safety Zone / Clean Room) สำหรับผู้ป่วยกลุ่มเสี่ยงและบุคลากรที่มีโรคประจำตัว",
+            "เตรียมความพร้อมห้องฉุกเฉิน (ER) ยาพ่นขยายหลอดลม และระบบคัดกรองผู้ป่วยโรคทางเดินหายใจ/หัวใจ"
+          ],
+          risk: [
+            "งดกิจกรรมกลางแจ้งทุกชนิด ให้อยู่ภายในอาคารที่ปิดมิดชิดหรือห้องปลอดฝุ่น",
+            "หากจำเป็นต้องออกนอกอาคาร ต้องสวมหน้ากากป้องกัน PM 2.5 (N95/KN95) ทุกครั้ง",
+            "เฝ้าระวังอาการกำเริบอย่างใกล้ชิด หากหอบเหนื่อยหรือแน่นหน้าอกให้รีบมาโรงพยาบาลทันที"
+          ],
+          public: [
+            "จำกัดระยะเวลาทำกิจกรรมและงดออกกำลังกายหนักกลางแจ้ง เปลี่ยนมาออกกำลังกายในอาคาร",
+            "สวมหน้ากากป้องกัน PM 2.5 ทุกครั้งที่ออกนอกบ้าน และล้างจมูกด้วยน้ำเกลือเมื่อกลับเข้าบ้าน",
+            "ปิดประตู-หน้าต่างให้สนิท เปิดเครื่องฟอกอากาศ และงดการเผาทุกชนิดอย่างเด็ดขาด"
+          ]
+        }
+      },
+      red: {
+        level: 5,
+        key: "red",
+        rangeText: "มากกว่า 75.0 µg/m³",
+        colorName: "สีแดง",
+        label: "มีผลกระทบต่อสุขภาพ",
+        hex: "#dc2626",
+        softBg: "#fee2e2",
+        pillClasses: "bg-red-100 text-red-900",
+        summary: "ระดับอันตรายต่อสุขภาพทุกคน ให้งดกิจกรรมกลางแจ้ง สวมหน้ากาก N95 และเปิดใช้มาตรการฉุกเฉิน",
+        advisories: {
+          staff: [
+            "ประกาศใช้แผนปฏิบัติการฉุกเฉินด้านมลพิษทางอากาศของโรงพยาบาลโพนสวรรค์ และรายงานศูนย์ EOC จังหวัด",
+            "งดกิจกรรมกลางแจ้งทั้งหมด เจ้าหน้าที่ภาคสนามจำเป็นต้องสวม N95 ที่ผ่าน Fit Check และหมุนเวียนลดระยะเวลาสัมผัสฝุ่น",
+            "จัดสรรพื้นที่ห้องปลอดฝุ่นเต็มกำลัง ประเมินสุขภาพบุคลากรกลุ่มเสี่ยง และเตรียมระบบรองรับผู้ป่วยภาวะวิกฤตทางเดินหายใจ"
+          ],
+          risk: [
+            "ห้ามออกนอกอาคารโดยเด็ดขาด ให้อยู่ในห้องปลอดฝุ่นที่มีเครื่องฟอกอากาศมาตรฐาน",
+            "เตรียมยาประจำตัวให้พร้อมและประสานคลินิก/รพ. เพื่อใช้บริการรับยาแทนหรือ Telemedicine",
+            "หากมีอาการหายใจลำบาก เจ็บหน้าอก หน้ามืด ให้โทร 1669 หรือมาห้องฉุกเฉินทันที"
+          ],
+          public: [
+            "งดกิจกรรมกลางแจ้งและหลีกเลี่ยงการออกนอกอาคารทุกคน หากหลีกเลี่ยงไม่ได้ต้องสวมหน้ากาก N95 เท่านั้น",
+            "ปิดช่องลม ประตู หน้าต่างทุกบาน ใช้เครื่องฟอกอากาศหรือจัดทำห้องปลอดฝุ่นภายในบ้าน",
+            "สังเกตอาการไอ แสบตา แน่นหน้าอก หรือผื่นแพ้ หากอาการไม่ดีขึ้นให้พบแพทย์ทันที"
+          ]
+        }
+      },
+      unknown: {
+        level: 0,
+        key: "unknown",
+        rangeText: "ไม่มีข้อมูล",
+        colorName: "เทา",
+        label: "ไม่พบข้อมูล",
+        hex: "#64748b",
+        softBg: "#f1f5f9",
+        pillClasses: "bg-slate-100 text-slate-700",
+        summary: "กำลังรอข้อมูลจริงจากสถานีตรวจวัด Air4Thai",
+        advisories: {
+          staff: ["ตรวจสอบการเชื่อมต่อสถานีตรวจวัดหลักและสถานีสำรอง"],
+          risk: ["ติดตามประกาศคุณภาพอากาศจากโรงพยาบาลโพนสวรรค์อย่างใกล้ชิด"],
+          public: ["กดปุ่มรีเฟรชเรียลไทม์เพื่อดึงข้อมูลล่าสุดอีกครั้ง"]
+        }
+      }
+    };
+
+    const state = {
+      chart: null,
+      chartMode: "daily",
+      tableSheet: "daily",
+      payload: null
+    };
+
+    /* ================= Utilities ================= */
+
+    function classifyPM25(val) {
+      if (val === null || val === undefined || Number.isNaN(Number(val)) || Number(val) < 0) {
+        return PCD_LEVELS.unknown;
+      }
+      const v = Number(val);
+      if (v <= 15.0) return PCD_LEVELS.blue;
+      if (v <= 25.0) return PCD_LEVELS.green;
+      if (v <= 37.5) return PCD_LEVELS.yellow;
+      if (v <= 75.0) return PCD_LEVELS.orange;
+      return PCD_LEVELS.red;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatThaiDateTime(dateStr, timeStr) {
+      if (!dateStr) return "--";
+      const parts = dateStr.split("-").map(Number);
+      if (parts.length !== 3) return `${dateStr} ${timeStr || ""}`.trim();
+      const [y, m, d] = parts;
+      return `${d} ${THAI_MONTHS_SHORT[m - 1] || m} ${y + 543}${timeStr ? ` เวลา ${timeStr} น.` : ""}`;
+    }
+
+    function formatThaiDateRow(dateStr) {
+      if (!dateStr) return "--";
+      const parts = dateStr.split("-").map(Number);
+      if (parts.length !== 3) return dateStr;
+      const [y, m, d] = parts;
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      return `${THAI_WEEKDAYS[dt.getUTCDay()]} ${d} ${THAI_MONTHS_SHORT[m - 1]} ${y + 543}`;
+    }
+
+    function formatThaiMonth(ymStr) {
+      if (!ymStr || !ymStr.includes("-")) return ymStr || "--";
+      const [y, m] = ymStr.split("-").map(Number);
+      return `${THAI_MONTHS_SHORT[m - 1] || m} ${y + 543}`;
+    }
+
+    function calcScalePercent(pm25) {
+      if (pm25 === null || pm25 === undefined || Number.isNaN(Number(pm25))) return 0;
+      const v = Math.max(0, Number(pm25));
+      if (v <= 15.0) return (v / 15.0) * 20;
+      if (v <= 25.0) return 20 + ((v - 15.0) / 10.0) * 20;
+      if (v <= 37.5) return 40 + ((v - 25.0) / 12.5) * 20;
+      if (v <= 75.0) return 60 + ((v - 37.5) / 37.5) * 20;
+      return Math.min(98, 80 + ((v - 75.0) / 75.0) * 20);
+    }
+
+    function round1(n) {
+      return Math.round(n * 10) / 10;
+    }
+
+    /* ================= Fetch Real Data from GAS Web App ================= */
+
+    async function fetchRealDashboardData(forceNoCache = false) {
+      const url = forceNoCache
+        ? `${GAS_WEB_APP_URL}?nocache=1&_t=${Date.now()}`
+        : GAS_WEB_APP_URL;
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          signal: controller.signal,
+          redirect: "follow"
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        if (!json || !json.ok || !json.station) {
+          throw new Error((json && json.error) || "ไม่พบข้อมูลจริงจาก API");
+        }
+        return json;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    /* ================= Render Hero & Side Panel ================= */
+
+    function renderHeroAndSide(payload) {
+      const st = payload.station;
+      const lv = classifyPM25(st.pm25);
+
+      const heroCard = document.getElementById("heroCard");
+      heroCard.className = `lg:col-span-7 hero-${lv.key} rounded-3xl p-6 text-white relative overflow-hidden flex flex-col justify-between gap-5 transition-all duration-300`;
+
+      document.getElementById("headerUpdatedAt").textContent = formatThaiDateTime(st.date, st.time);
+
+      document.getElementById("stationName").innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span>${escapeHtml(st.nameTH)} (${escapeHtml(st.stationID)})</span>
+      `;
+
+      const distText = st.distanceKm && st.distanceKm < 9000
+        ? ` • ห่างจาก รพ.โพนสวรรค์ ${st.distanceKm} กม.`
+        : "";
+      document.getElementById("stationArea").textContent = `${st.areaTH || "จังหวัดนครพนม"}${distText}`;
+      document.getElementById("statusPillHero").textContent = `ระดับ ${lv.level} • ${lv.label}`;
+
+      const pm25El = document.getElementById("pm25Value");
+      pm25El.classList.remove("animate-pulse");
+      pm25El.textContent = st.pm25 !== null ? Number(st.pm25).toFixed(1) : "--";
+
+      const aqiEl = document.getElementById("aqiValue");
+      aqiEl.classList.remove("animate-pulse");
+      aqiEl.textContent = st.aqi !== null ? String(Math.round(st.aqi)) : "--";
+
+      document.getElementById("aqiParamBadge").textContent = `สารมลพิษหลัก: ${st.aqiParam || "PM2.5"}`;
+      document.getElementById("heroSummary").textContent = lv.summary;
+      document.getElementById("pcdScaleCurrentText").textContent =
+        st.pm25 !== null ? `ค่าปัจจุบัน ${Number(st.pm25).toFixed(1)} µg/m³ (${lv.colorName})` : "--";
+      document.getElementById("pcdPointer").style.left = `${calcScalePercent(st.pm25)}%`;
+
+      // แจ้งเตือนหากใช้สถานีสำรอง
+      const fb = document.getElementById("fallbackBanner");
+      if (st.isFallback || st.fallbackReason) {
+        document.getElementById("fallbackBannerText").textContent = st.fallbackReason;
+        fb.classList.remove("hidden");
+        fb.classList.add("flex");
+      } else {
+        fb.classList.add("hidden");
+        fb.classList.remove("flex");
+      }
+
+      // สารมลพิษอื่น ๆ
+      const fmt = (v) => (v !== null && v !== undefined && v !== "" ? String(v) : "—");
+      document.getElementById("valPM10").textContent = fmt(st.pm10);
+      document.getElementById("valNO2").textContent = fmt(st.no2);
+      document.getElementById("valO3").textContent = fmt(st.o3);
+      document.getElementById("valCO").textContent = fmt(st.co);
+      document.getElementById("valSO2").textContent = fmt(st.so2);
+      document.getElementById("valPM25AQI").textContent = fmt(st.pm25Aqi);
+
+      // สถานีใกล้เคียง
+      const nearby = payload.nearbyStations || [];
+      const nearbyEl = document.getElementById("nearbyList");
+      if (!nearby.length) {
+        nearbyEl.innerHTML = `<div class="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">ไม่พบข้อมูลสถานีใกล้เคียง</div>`;
+      } else {
+        nearbyEl.innerHTML = nearby.map((n) => {
+          const nLv = classifyPM25(n.pm25);
+          const pmText = n.pm25 !== null ? `${Number(n.pm25).toFixed(1)} µg/m³` : "ไม่มีค่า";
+          const rowCls = n.isActive
+            ? "bg-teal-50/80 border-teal-200"
+            : "bg-slate-50 border-slate-200/80";
+          const activeTag = n.isActive
+            ? `<span class="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[10px] font-semibold">ใช้งานอยู่</span>`
+            : "";
+          return `
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border ${rowCls}">
+              <div class="min-w-0">
+                <div class="font-display text-xs sm:text-sm font-semibold text-slate-900 truncate">${escapeHtml(n.nameTH)}${activeTag}</div>
+                <div class="text-[11px] text-slate-500 truncate">${escapeHtml(n.areaTH)} • ${n.distanceKm} กม.</div>
+              </div>
+              <span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${nLv.pillClasses}">${pmText}</span>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    /* ================= Render Health Advisories ================= */
+
+    function renderAdvisories(station) {
+      const lv = classifyPM25(station.pm25);
+
+      document.getElementById("advisorySubtitle").textContent =
+        `แนวทางปฏิบัติและมาตรการอาชีวอนามัยสำหรับระดับ${lv.colorName} : ${lv.label} (${lv.rangeText})`;
+
+      const badge = document.getElementById("advisoryLevelBadge");
+      badge.className = `font-display text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-full ${lv.pillClasses}`;
+      badge.textContent = `ระดับ ${lv.level} • ${lv.label}`;
+
+      ["advCardStaff", "advCardRisk", "advCardPublic"].forEach((id) => {
+        document.getElementById(id).style.borderTopColor = lv.hex;
+      });
+      ["advIconStaff", "advIconRisk", "advIconPublic"].forEach((id) => {
+        const el = document.getElementById(id);
+        el.style.backgroundColor = lv.softBg;
+        el.style.color = lv.hex;
+      });
+
+      const fill = (id, items) => {
+        document.getElementById(id).innerHTML = items.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+      };
+      fill("advListStaff", lv.advisories.staff);
+      fill("advListRisk", lv.advisories.risk);
+      fill("advListPublic", lv.advisories.public);
+
+      document.querySelectorAll("#legendStrip .legend-item").forEach((el) => {
+        const isCurrent = el.dataset.level === lv.key;
+        el.style.borderColor = isCurrent ? lv.hex : "";
+        el.style.borderWidth = isCurrent ? "2px" : "1px";
+        el.style.backgroundColor = isCurrent ? lv.softBg : "";
+      });
+    }
+
+    /* ================= Render Real Chart (Daily / Weekly / Monthly / Yearly) ================= */
+
+    const thresholdAndValuePlugin = {
+      id: "thresholdAndValuePlugin",
+      afterDatasetsDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.y) return;
+
+        ctx.save();
+        // เส้นเกณฑ์มาตรฐาน 37.5 และ 75.0 µg/m³
+        const lines = [
+          { val: 37.5, color: "#ea580c", label: "เกณฑ์มาตรฐาน 37.5 µg/m³" },
+          { val: 75.0, color: "#dc2626", label: "มีผลกระทบฯ 75.0 µg/m³" }
+        ];
+        for (const ln of lines) {
+          if (ln.val > scales.y.max || ln.val < scales.y.min) continue;
+          const y = scales.y.getPixelForValue(ln.val);
+          ctx.beginPath();
+          ctx.setLineDash([6, 4]);
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = ln.color;
+          ctx.moveTo(chartArea.left, y);
+          ctx.lineTo(chartArea.right, y);
+          ctx.stroke();
+
+          ctx.setLineDash([]);
+          ctx.font = "600 11px Prompt, Sarabun, sans-serif";
+          ctx.fillStyle = ln.color;
+          ctx.textAlign = "right";
+          ctx.fillText(ln.label, chartArea.right - 4, y - 5);
+        }
+
+        // แสดงตัวเลขกำกับบนจุดข้อมูลจริงเมื่อมีไม่เกิน 14 จุด (เพื่อให้เห็นค่าชัดเจนแม้เริ่มเก็บวันแรก)
+        const meta = chart.getDatasetMeta(0);
+        const data = chart.data.datasets[0] ? chart.data.datasets[0].data : [];
+        if (meta && meta.data && data.length > 0 && data.length <= 14) {
+          ctx.font = "600 12px Prompt, Sarabun, sans-serif";
+          ctx.fillStyle = "#0f172a";
+          ctx.textAlign = "center";
+          meta.data.forEach((pt, idx) => {
+            const v = data[idx];
+            if (v === null || v === undefined) return;
+            ctx.fillText(Number(v).toFixed(1), pt.x, pt.y - 10);
+          });
+        }
+        ctx.restore();
+      }
+    };
+
+    function renderChartView(mode) {
+      state.chartMode = mode;
+      const history = (state.payload && state.payload.history) ? state.payload.history : null;
+      const stats = (history && history.stats) ? history.stats : { totalHourlyRecords: 0, totalDaysRecorded: 0, firstDate: null, lastDate: null };
+
+      // อัปเดตแถบแจ้งสถานะข้อมูลจริงจาก Google Sheets อย่างโปร่งใส
+      const noticeEl = document.getElementById("realDataNoticeText");
+      if (stats.totalHourlyRecords === 0) {
+        noticeEl.innerHTML =
+          `<strong>สถานะฐานข้อมูล Google Sheets:</strong> ยังไม่พบบันทึกประวัติย้อนหลัง ระบบจะเริ่มบันทึกข้อมูลจริงทุก 1 ชั่วโมงอัตโนมัติ (ไม่มีการสร้างข้อมูลจำลอง)`;
+      } else {
+        const startLabel = stats.firstDate ? formatThaiDateRow(stats.firstDate) : "--";
+        const extraNote = stats.totalDaysRecorded <= 1
+          ? " — เนื่องจากเพิ่งเริ่มเก็บข้อมูลวันแรก กราฟจึงพล็อตเฉพาะจุดข้อมูลจริงเท่าที่บันทึกไว้ และจะสะสมข้อมูลจริงเพิ่มอัตโนมัติทุก 1 ชั่วโมง (ไม่มีข้อมูลจำลอง)"
+          : " — พล็อตเฉพาะข้อมูลจริงที่เก็บสะสมใน Google Sheets ไม่มีการเติมข้อมูลจำลอง";
+        noticeEl.innerHTML =
+          `<strong>ฐานข้อมูลจริง Google Sheets:</strong> เก็บสะสมแล้ว <strong>${stats.totalHourlyRecords} รายการรายชั่วโมง</strong> / <strong>${stats.totalDaysRecorded} วัน</strong> (เริ่มบันทึก ${startLabel})${extraNote}`;
+      }
+
+      document.getElementById("kpiRecords").textContent = `${stats.totalHourlyRecords} ชม. / ${stats.totalDaysRecorded} วัน`;
+      document.getElementById("kpiRecordsNote").textContent = stats.firstDate
+        ? `เริ่มเก็บตั้งแต่ ${formatThaiDateRow(stats.firstDate)}`
+        : "รอการบันทึกรอบแรก";
+
+      let labels = [];
+      let values = [];
+      let metaNotes = [];
+      let chartType = "bar";
+
+      if (mode === "daily") {
+        const list = (history && Array.isArray(history.daily)) ? history.daily : [];
+        chartType = list.length >= 2 ? "line" : "bar";
+        labels = list.map((h) => `${h.time} น.`);
+        values = list.map((h) => Number(h.pm25));
+        metaNotes = list.map((h) => ({
+          title: formatThaiDateTime(h.date, h.time),
+          detail: `${classifyPM25(h.pm25).label}${h.aqi !== null ? ` • AQI ${h.aqi}` : ""}`
+        }));
+        const dayStr = list.length ? formatThaiDateRow(list[0].date) : "วันนี้";
+        document.getElementById("chartSubtitle").textContent =
+          `มุมมองรายวัน (${dayStr}) — ข้อมูลรายชั่วโมงจริงจากชีต Hourly_Logs (${list.length} จุดข้อมูล)`;
+      } else if (mode === "weekly") {
+        const list = (history && Array.isArray(history.weekly)) ? history.weekly : [];
+        chartType = "bar";
+        labels = list.map((d) => {
+          const [, m, day] = d.date.split("-");
+          return `${Number(day)} ${THAI_MONTHS_SHORT[Number(m) - 1]}`;
+        });
+        values = list.map((d) => Number(d.avg));
+        metaNotes = list.map((d) => ({
+          title: formatThaiDateRow(d.date),
+          detail: `${classifyPM25(d.avg).label} | ต่ำสุด ${d.min} – สูงสุด ${d.max} µg/m³ (${d.hoursCount} ชม.)`
+        }));
+        document.getElementById("chartSubtitle").textContent =
+          `มุมมองรายสัปดาห์ (ย้อนหลังไม่เกิน 7 วัน) — ค่าเฉลี่ยรายวันจริงจากชีต Daily_Summary (${list.length} วันที่มีข้อมูล)`;
+      } else if (mode === "monthly") {
+        const list = (history && Array.isArray(history.monthly)) ? history.monthly : [];
+        chartType = list.length >= 7 ? "line" : "bar";
+        labels = list.map((d) => {
+          const [, m, day] = d.date.split("-");
+          return `${Number(day)} ${THAI_MONTHS_SHORT[Number(m) - 1]}`;
+        });
+        values = list.map((d) => Number(d.avg));
+        metaNotes = list.map((d) => ({
+          title: formatThaiDateRow(d.date),
+          detail: `${classifyPM25(d.avg).label} | ต่ำสุด ${d.min} – สูงสุด ${d.max} µg/m³ (${d.hoursCount} ชม.)`
+        }));
+        document.getElementById("chartSubtitle").textContent =
+          `มุมมองรายเดือน (ย้อนหลังไม่เกิน 30 วัน) — ค่าเฉลี่ยรายวันจริงจากชีต Daily_Summary (${list.length} วันที่มีข้อมูล)`;
+      } else {
+        const list = (history && Array.isArray(history.yearly)) ? history.yearly : [];
+        chartType = "bar";
+        labels = list.map((m) => formatThaiMonth(m.month));
+        values = list.map((m) => Number(m.avg));
+        metaNotes = list.map((m) => ({
+          title: `เดือน ${formatThaiMonth(m.month)}`,
+          detail: `${classifyPM25(m.avg).label} | เฉลี่ยจากข้อมูลจริง ${m.daysCount} วัน (ต่ำสุด ${m.min} – สูงสุด ${m.max})`
+        }));
+        document.getElementById("chartSubtitle").textContent =
+          `มุมมองรายปี (รอบ 12 เดือน) — ค่าเฉลี่ยรายเดือนจริงคำนวณจากชีต Daily_Summary (${list.length} เดือนที่มีข้อมูล)`;
+      }
+
+      // อัปเดต KPI ในมุมมองปัจจุบัน
+      if (values.length === 0) {
+        document.getElementById("kpiAvg").textContent = "--";
+        document.getElementById("kpiAvgNote").textContent = "ยังไม่มีข้อมูล";
+        document.getElementById("kpiMax").textContent = "--";
+        document.getElementById("kpiMaxNote").textContent = "--";
+        document.getElementById("kpiMin").textContent = "--";
+        document.getElementById("kpiMinNote").textContent = "--";
+      } else {
+        const avg = round1(values.reduce((a, b) => a + b, 0) / values.length);
+        let maxIdx = 0;
+        let minIdx = 0;
+        for (let i = 1; i < values.length; i++) {
+          if (values[i] > values[maxIdx]) maxIdx = i;
+          if (values[i] < values[minIdx]) minIdx = i;
+        }
+        const avgLv = classifyPM25(avg);
+        const maxLv = classifyPM25(values[maxIdx]);
+        const minLv = classifyPM25(values[minIdx]);
+
+        const kpiAvg = document.getElementById("kpiAvg");
+        kpiAvg.textContent = `${avg.toFixed(1)} µg/m³`;
+        kpiAvg.style.color = avgLv.hex;
+        document.getElementById("kpiAvgNote").textContent = avgLv.label;
+
+        const kpiMax = document.getElementById("kpiMax");
+        kpiMax.textContent = `${values[maxIdx].toFixed(1)} µg/m³`;
+        kpiMax.style.color = maxLv.hex;
+        document.getElementById("kpiMaxNote").textContent = metaNotes[maxIdx] ? metaNotes[maxIdx].title : "--";
+
+        const kpiMin = document.getElementById("kpiMin");
+        kpiMin.textContent = `${values[minIdx].toFixed(1)} µg/m³`;
+        kpiMin.style.color = minLv.hex;
+        document.getElementById("kpiMinNote").textContent = metaNotes[minIdx] ? metaNotes[minIdx].title : "--";
+      }
+
+      // วาดกราฟ Chart.js
+      const emptyEl = document.getElementById("chartEmptyState");
+      if (state.chart) {
+        state.chart.destroy();
+        state.chart = null;
+      }
+
+      if (values.length === 0) {
+        emptyEl.classList.remove("hidden");
+        return;
+      }
+      emptyEl.classList.add("hidden");
+
+      const canvas = document.getElementById("pm25Chart");
+      const ctx = canvas.getContext("2d");
+      const colors = values.map((v) => classifyPM25(v).hex);
+      const maxVal = Math.max(...values);
+      const suggestedMax = Math.max(45, Math.ceil((maxVal + 10) / 10) * 10);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, "rgba(15, 118, 110, 0.25)");
+      gradient.addColorStop(1, "rgba(15, 118, 110, 0.02)");
+
+      const dataset = chartType === "bar"
+        ? {
+            label: "PM 2.5 จริง (µg/m³)",
+            data: values,
+            backgroundColor: colors.map((c) => `${c}d9`),
+            borderColor: colors,
+            borderWidth: 1.5,
+            borderRadius: 10,
+            maxBarThickness: 64
+          }
+        : {
+            label: "PM 2.5 จริง (µg/m³)",
+            data: values,
+            borderColor: "#0f766e",
+            backgroundColor: gradient,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 5.5,
+            pointHoverRadius: 7.5,
+            pointBackgroundColor: colors,
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.8
+          };
+
+      state.chart = new Chart(ctx, {
+        type: chartType,
+        data: { labels, datasets: [dataset] },
+        plugins: [thresholdAndValuePlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 350 },
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#0f172a",
+              titleFont: { family: "Prompt, Sarabun, sans-serif", size: 13, weight: "600" },
+              bodyFont: { family: "Sarabun, sans-serif", size: 13 },
+              padding: 12,
+              cornerRadius: 10,
+              callbacks: {
+                title(items) {
+                  const idx = items[0].dataIndex;
+                  return metaNotes[idx] ? metaNotes[idx].title : items[0].label;
+                },
+                label(item) {
+                  return ` PM 2.5 จริง: ${Number(item.parsed.y).toFixed(1)} µg/m³`;
+                },
+                afterLabel(item) {
+                  const idx = item.dataIndex;
+                  return metaNotes[idx] ? ` ${metaNotes[idx].detail}` : "";
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { family: "Prompt, Sarabun, sans-serif", size: 11 },
+                color: "#64748b",
+                maxRotation: 0
+              }
+            },
+            y: {
+              beginAtZero: true,
+              suggestedMax,
+              grid: { color: "#e2e8f0" },
+              ticks: {
+                font: { family: "Prompt, Sarabun, sans-serif", size: 11 },
+                color: "#64748b"
+              },
+              title: {
+                display: true,
+                text: "µg/m³",
+                font: { family: "Prompt, Sarabun, sans-serif", size: 12, weight: "500" },
+                color: "#475569"
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /* ================= Render Real History Table ================= */
+
+    function renderHistoryTable(sheetMode) {
+      state.tableSheet = sheetMode;
+      const head = document.getElementById("historyTableHead");
+      const body = document.getElementById("historyTableBody");
+      const history = (state.payload && state.payload.history) ? state.payload.history : null;
+
+      if (sheetMode === "daily") {
+        document.getElementById("tableSubtitle").textContent = "ข้อมูลจริงจากชีต Daily_Summary ใน Google Sheets (เรียงจากวันล่าสุด)";
+        head.innerHTML = `
+          <tr>
+            <th class="px-4 py-3 whitespace-nowrap">วันที่</th>
+            <th class="px-4 py-3 whitespace-nowrap">สถานีตรวจวัด</th>
+            <th class="px-4 py-3 whitespace-nowrap">PM 2.5 เฉลี่ย (µg/m³)</th>
+            <th class="px-4 py-3 whitespace-nowrap">ต่ำสุด – สูงสุด</th>
+            <th class="px-4 py-3 whitespace-nowrap">เวลาสูงสุด</th>
+            <th class="px-4 py-3 whitespace-nowrap">ชั่วโมงที่เก็บได้</th>
+            <th class="px-4 py-3 whitespace-nowrap">ระดับคุณภาพอากาศ</th>
+          </tr>
+        `;
+        const rows = (history && Array.isArray(history.dailySummary)) ? history.dailySummary : [];
+        if (!rows.length) {
+          body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ยังไม่มีข้อมูลในชีต Daily_Summary</td></tr>`;
+          return;
+        }
+        body.innerHTML = rows.map((d) => {
+          const lv = classifyPM25(d.avg);
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${formatThaiDateRow(d.date)}</td>
+              <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(d.stationName || d.stationID)} (${escapeHtml(d.stationID)})</td>
+              <td class="px-4 py-3 font-display font-bold text-base" style="color:${lv.hex}">${Number(d.avg).toFixed(1)}</td>
+              <td class="px-4 py-3 whitespace-nowrap">${Number(d.min).toFixed(1)} – ${Number(d.max).toFixed(1)} µg/m³</td>
+              <td class="px-4 py-3 whitespace-nowrap">${d.peakTime ? `${d.peakTime} น.` : "—"}</td>
+              <td class="px-4 py-3 whitespace-nowrap">${d.hoursCount || 0} ชม.</td>
+              <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${lv.label}</span></td>
+            </tr>
+          `;
+        }).join("");
+      } else {
+        document.getElementById("tableSubtitle").textContent = "ข้อมูลจริงจากชีต Hourly_Logs ใน Google Sheets (เรียงจากชั่วโมงล่าสุด)";
+        head.innerHTML = `
+          <tr>
+            <th class="px-4 py-3 whitespace-nowrap">วันที่ – เวลาข้อมูล</th>
+            <th class="px-4 py-3 whitespace-nowrap">สถานีตรวจวัด</th>
+            <th class="px-4 py-3 whitespace-nowrap">PM 2.5 (µg/m³)</th>
+            <th class="px-4 py-3 whitespace-nowrap">AQI</th>
+            <th class="px-4 py-3 whitespace-nowrap">PM 10 / NO₂</th>
+            <th class="px-4 py-3 whitespace-nowrap">ระดับคุณภาพอากาศ</th>
+            <th class="px-4 py-3 whitespace-nowrap">เวลาที่บันทึกลงชีต</th>
+          </tr>
+        `;
+        const rows = (history && Array.isArray(history.hourlyLogs)) ? history.hourlyLogs : [];
+        if (!rows.length) {
+          body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ยังไม่มีข้อมูลในชีต Hourly_Logs</td></tr>`;
+          return;
+        }
+        body.innerHTML = rows.map((h) => {
+          const lv = classifyPM25(h.pm25);
+          const extraPoll = `${h.pm10 !== null ? h.pm10 : "—"} / ${h.no2 !== null ? h.no2 : "—"}`;
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${formatThaiDateTime(h.date, h.time)}</td>
+              <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(h.stationName || h.stationID)} (${escapeHtml(h.stationID)})</td>
+              <td class="px-4 py-3 font-display font-bold text-base" style="color:${lv.hex}">${Number(h.pm25).toFixed(1)}</td>
+              <td class="px-4 py-3 font-display font-semibold">${h.aqi !== null ? h.aqi : "—"}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-slate-600">${extraPoll}</td>
+              <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${lv.label}</span></td>
+              <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500">${escapeHtml(h.savedAt || "—")}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    function exportCurrentTableCsv() {
+      const history = state.payload && state.payload.history;
+      if (!history) return;
+      let lines = [];
+      let filename = "";
+
+      if (state.tableSheet === "daily") {
+        lines.push(["วันที่", "รหัสสถานี", "ชื่อสถานี", "PM2.5 เฉลี่ย", "ต่ำสุด", "สูงสุด", "เวลาสูงสุด", "จำนวนชั่วโมง", "ระดับคุณภาพอากาศ"].join(","));
+        for (const d of (history.dailySummary || [])) {
+          const lv = classifyPM25(d.avg);
+          lines.push([d.date, d.stationID, `"${(d.stationName || "").replace(/"/g, '""')}"`, d.avg, d.min, d.max, d.peakTime || "", d.hoursCount || 0, `"${lv.label}"`].join(","));
+        }
+        filename = "phonsawan-pm25-daily-summary.csv";
+      } else {
+        lines.push(["วันที่", "เวลา", "รหัสสถานี", "ชื่อสถานี", "PM2.5", "AQI", "PM10", "NO2", "ระดับคุณภาพอากาศ", "เวลาที่บันทึก"].join(","));
+        for (const h of (history.hourlyLogs || [])) {
+          const lv = classifyPM25(h.pm25);
+          lines.push([h.date, h.time, h.stationID, `"${(h.stationName || "").replace(/"/g, '""')}"`, h.pm25, h.aqi ?? "", h.pm10 ?? "", h.no2 ?? "", `"${lv.label}"`, `"${h.savedAt || ""}"`].join(","));
+        }
+        filename = "phonsawan-pm25-hourly-logs.csv";
+      }
+
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    /* ================= Main Controller ================= */
+
+    async function loadAndRender(forceNoCache = false) {
+      const btn = document.getElementById("refreshBtn");
+      const icon = document.getElementById("refreshIcon");
+      const errBox = document.getElementById("errorBanner");
+
+      btn.disabled = true;
+      icon.classList.add("spinning");
+      errBox.classList.add("hidden");
+      errBox.classList.remove("flex");
+
+      try {
+        const data = await fetchRealDashboardData(forceNoCache);
+        state.payload = data;
+        renderHeroAndSide(data);
+        renderAdvisories(data.station);
+        renderChartView(state.chartMode);
+        renderHistoryTable(state.tableSheet);
+
+        const ts = data.fetchedAt ? data.fetchedAt.replace("T", " ").slice(0, 19) : "";
+        document.getElementById("dataSourceTag").textContent = `แหล่งข้อมูลจริง: Air4Thai + Google Sheets (${ts})`;
+      } catch (err) {
+        document.getElementById("errorBannerText").textContent =
+          `ไม่สามารถเชื่อมต่อ Google Apps Script Web App ได้ในขณะนี้ (${err && err.message ? err.message : "Network Error"}) กรุณากดปุ่ม "รีเฟรชเรียลไทม์" อีกครั้ง`;
+        errBox.classList.remove("hidden");
+        errBox.classList.add("flex");
+      } finally {
+        btn.disabled = false;
+        icon.classList.remove("spinning");
+      }
+    }
+
+    function initEvents() {
+      document.getElementById("refreshBtn").addEventListener("click", () => loadAndRender(true));
+      document.getElementById("exportCsvBtn").addEventListener("click", exportCurrentTableCsv);
+
+      document.querySelectorAll(".chart-tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".chart-tab-btn").forEach((b) => {
+            b.className = "chart-tab-btn font-display text-xs sm:text-sm font-medium px-2.5 sm:px-3.5 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition whitespace-nowrap";
+            b.setAttribute("aria-selected", "false");
+          });
+          btn.className = "chart-tab-btn font-display text-xs sm:text-sm font-semibold px-2.5 sm:px-3.5 py-2 rounded-lg bg-white text-teal-800 shadow-sm transition whitespace-nowrap";
+          btn.setAttribute("aria-selected", "true");
+          renderChartView(btn.dataset.mode);
+        });
+      });
+
+      document.querySelectorAll(".table-tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".table-tab-btn").forEach((b) => {
+            b.className = "table-tab-btn font-display text-xs font-medium px-3 py-1.5 rounded-lg text-slate-600";
+            b.setAttribute("aria-selected", "false");
+          });
+          btn.className = "table-tab-btn font-display text-xs font-semibold px-3 py-1.5 rounded-lg bg-white text-teal-800 shadow-sm";
+          btn.setAttribute("aria-selected", "true");
+          renderHistoryTable(btn.dataset.sheet);
+        });
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initEvents();
+      loadAndRender(false);
+      setInterval(() => loadAndRender(false), 15 * 60 * 1000);
+    });
+  </script>
+</body>
+</html>
