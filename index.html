@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ระบบเฝ้าระวังคุณภาพอากาศและฝุ่นละออง PM 2.5 โรงพยาบาลโพนสวรรค์</title>
-  <meta name="description" content="ระบบรายงานสถานการณ์ฝุ่น PM 2.5 และมาตรการอาชีวอนามัย โรงพยาบาลโพนสวรรค์ จังหวัดนครพนม ข้อมูลจริงแบบเรียลไทม์จาก Air4Thai และฐานข้อมูล Google Sheets" />
+  <meta name="description" content="ระบบรายงานสถานการณ์ฝุ่น PM 2.5 และมาตรการอาชีวอนามัย โรงพยาบาลโพนสวรรค์ จังหวัดนครพนม ข้อมูลจริงแบบเรียลไทม์จาก Air4Thai" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
 
   <!-- Inline SVG Favicon ป้องกัน 404 favicon.ico -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230f766e'/%3E%3Cpath d='M28 14h8v14h14v8H36v14h-8V36H14v-8h14z' fill='%23ffffff'/%3E%3C/svg%3E" />
@@ -12,10 +13,10 @@
   <!-- Google Fonts: Prompt และ Sarabun -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -29,8 +30,13 @@
     };
   </script>
 
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <!-- Chart.js CDN พร้อม Subresource Integrity (SHA-384) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+    integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  ></script>
 
   <style>
     body {
@@ -540,22 +546,26 @@
   </footer>
 
   <script>
+    (() => {
+    "use strict";
+
     /**
      * =========================================================================
      * Production Google Apps Script Web App URL (Phonsawan_Hospital_PM25_DB)
-     * เชื่อมต่อข้อมูลจริงจาก Air4Thai และฐานข้อมูลจริง Google Sheets โดยตรง
-     * ห้ามสร้างหรือเติมข้อมูลปลอม (Zero Mock/Dummy Data)
+     * เชื่อมต่อข้อมูลจริงจาก Air4Thai และฐานข้อมูล Google Sheets โดยตรง
+     * ห่อหุ้มด้วย IIFE (Strict Mode) เพื่อป้องกันการรั่วไหลของตัวแปรใน Global Scope
      * =========================================================================
      */
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwFkbziCL6LdvdbDtXmlvLcZy2nM5lwaKm0aBM_Re8OMGppMlcqbe_I2tI9cq_R5p7_Qg/exec";
+    const MANUAL_REFRESH_COOLDOWN_MS = 5000;
 
-    const THAI_MONTHS_SHORT = [
+    const THAI_MONTHS_SHORT = Object.freeze([
       "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
       "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
-    ];
-    const THAI_WEEKDAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+    ]);
+    const THAI_WEEKDAYS = Object.freeze(["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."]);
 
-    const PCD_LEVELS = {
+    const PCD_LEVELS = Object.freeze({
       blue: {
         level: 1,
         key: "blue",
@@ -712,12 +722,13 @@
           public: ["กดปุ่มรีเฟรชเรียลไทม์เพื่อดึงข้อมูลล่าสุดอีกครั้ง"]
         }
       }
-    };
+    });
 
     const state = {
       chart: null,
       chartMode: "daily",
       payload: null,
+      lastManualRefreshAt: 0,
       dateFilter: {
         start: "",
         end: "",
@@ -726,7 +737,7 @@
       }
     };
 
-    /* ================= Utilities ================= */
+    /* ================= Security & Validation Utilities ================= */
 
     function classifyPM25(val) {
       if (val === null || val === undefined || Number.isNaN(Number(val)) || Number(val) < 0) {
@@ -741,12 +752,151 @@
     }
 
     function escapeHtml(str) {
-      return String(str || "")
+      return String(str ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    function sanitizeHexColor(hex) {
+      return /^#[0-9a-fA-F]{6}$/.test(String(hex || "")) ? String(hex) : "#0f172a";
+    }
+
+    function sanitizeText(val, maxLen = 120) {
+      return String(val ?? "")
+        .replace(/[\u0000-\u001F\u007F]/g, " ")
+        .trim()
+        .slice(0, maxLen);
+    }
+
+    function sanitizeStationId(val) {
+      const s = String(val ?? "").trim();
+      return /^[a-zA-Z0-9_-]{1,20}$/.test(s) ? s : "";
+    }
+
+    function sanitizeDateYmd(val) {
+      const s = String(val ?? "").trim();
+      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+    }
+
+    function sanitizeMonthYm(val) {
+      const s = String(val ?? "").trim();
+      return /^\d{4}-\d{2}$/.test(s) ? s : "";
+    }
+
+    function sanitizeTimeHm(val) {
+      const s = String(val ?? "").trim();
+      return /^\d{2}:\d{2}$/.test(s) ? s : "";
+    }
+
+    function sanitizeBoundedNumber(val, min = 0, max = 5000) {
+      if (val === null || val === undefined || val === "") return null;
+      const n = Number(val);
+      if (!Number.isFinite(n) || n < min || n > max) return null;
+      return n;
+    }
+
+    /**
+     * ป้องกัน CSV Formula Injection (CWE-1236 / Excel DDE Injection)
+     * และจัดรูปแบบเซลล์ตามมาตรฐาน RFC-4180
+     */
+    function sanitizeCsvCell(val) {
+      if (val === null || val === undefined) return '""';
+      if (typeof val === "number" && Number.isFinite(val)) {
+        return String(val);
+      }
+      let str = String(val).replace(/[\r\n]+/g, " ").trim();
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+
+    function validateAndSanitizeApiPayload(raw) {
+      if (!raw || typeof raw !== "object" || raw.ok !== true || !raw.station || typeof raw.station !== "object") {
+        throw new Error("Invalid API response structure");
+      }
+
+      const rawSt = raw.station;
+      const station = {
+        stationID: sanitizeStationId(rawSt.stationID),
+        nameTH: sanitizeText(rawSt.nameTH, 120) || "สถานีตรวจวัดจังหวัดนครพนม",
+        areaTH: sanitizeText(rawSt.areaTH, 150),
+        distanceKm: sanitizeBoundedNumber(rawSt.distanceKm, 0, 9999),
+        date: sanitizeDateYmd(rawSt.date),
+        time: sanitizeTimeHm(rawSt.time),
+        pm25: sanitizeBoundedNumber(rawSt.pm25, 0, 2000),
+        pm25Aqi: sanitizeBoundedNumber(rawSt.pm25Aqi, 0, 1000),
+        pm10: sanitizeBoundedNumber(rawSt.pm10, 0, 5000),
+        no2: sanitizeBoundedNumber(rawSt.no2, 0, 5000),
+        aqi: sanitizeBoundedNumber(rawSt.aqi, 0, 1000),
+        aqiParam: sanitizeText(rawSt.aqiParam, 20) || "PM2.5",
+        isFallback: Boolean(rawSt.isFallback),
+        fallbackReason: sanitizeText(rawSt.fallbackReason, 240)
+      };
+
+      const nearbyStations = Array.isArray(raw.nearbyStations)
+        ? raw.nearbyStations.slice(0, 8).map((n) => ({
+            stationID: sanitizeStationId(n && n.stationID),
+            nameTH: sanitizeText(n && n.nameTH, 120),
+            areaTH: sanitizeText(n && n.areaTH, 150),
+            distanceKm: sanitizeBoundedNumber(n && n.distanceKm, 0, 9999),
+            pm25: sanitizeBoundedNumber(n && n.pm25, 0, 2000),
+            isActive: Boolean(n && n.isActive)
+          }))
+        : [];
+
+      const rawHist = (raw.history && typeof raw.history === "object") ? raw.history : {};
+      const sanitizeHourlyList = (arr) => Array.isArray(arr)
+        ? arr.slice(0, 200).map((h) => ({
+            date: sanitizeDateYmd(h && h.date),
+            time: sanitizeTimeHm(h && h.time),
+            pm25: sanitizeBoundedNumber(h && h.pm25, 0, 2000),
+            aqi: sanitizeBoundedNumber(h && h.aqi, 0, 1000)
+          })).filter((h) => h.date && h.pm25 !== null)
+        : [];
+
+      const sanitizeDailyList = (arr) => Array.isArray(arr)
+        ? arr.slice(0, 400).map((d) => ({
+            date: sanitizeDateYmd(d && d.date),
+            stationID: sanitizeStationId(d && d.stationID),
+            stationName: sanitizeText(d && d.stationName, 120),
+            avg: sanitizeBoundedNumber(d && d.avg, 0, 2000),
+            min: sanitizeBoundedNumber(d && d.min, 0, 2000),
+            max: sanitizeBoundedNumber(d && d.max, 0, 2000),
+            peakTime: sanitizeTimeHm(d && d.peakTime),
+            hoursCount: sanitizeBoundedNumber(d && d.hoursCount, 0, 24) || 0
+          })).filter((d) => d.date && d.avg !== null)
+        : [];
+
+      const sanitizeYearlyList = (arr) => Array.isArray(arr)
+        ? arr.slice(0, 24).map((m) => ({
+            month: sanitizeMonthYm(m && m.month),
+            avg: sanitizeBoundedNumber(m && m.avg, 0, 2000),
+            min: sanitizeBoundedNumber(m && m.min, 0, 2000),
+            max: sanitizeBoundedNumber(m && m.max, 0, 2000),
+            daysCount: sanitizeBoundedNumber(m && m.daysCount, 0, 366) || 0
+          })).filter((m) => m.month && m.avg !== null)
+        : [];
+
+      const fetchedAtRaw = sanitizeText(raw.fetchedAt, 32);
+      const fetchedAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(fetchedAtRaw) ? fetchedAtRaw : "";
+
+      return {
+        ok: true,
+        fetchedAt,
+        station,
+        nearbyStations,
+        history: {
+          daily: sanitizeHourlyList(rawHist.daily),
+          weekly: sanitizeDailyList(rawHist.weekly),
+          monthly: sanitizeDailyList(rawHist.monthly),
+          yearly: sanitizeYearlyList(rawHist.yearly),
+          dailySummary: sanitizeDailyList(rawHist.dailySummary)
+        }
+      };
     }
 
     function formatThaiDateTime(dateStr, timeStr) {
@@ -798,6 +948,8 @@
       try {
         const res = await fetch(url, {
           method: "GET",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
           signal: controller.signal,
           redirect: "follow"
         });
@@ -805,10 +957,7 @@
           throw new Error(`HTTP ${res.status}`);
         }
         const json = await res.json();
-        if (!json || !json.ok || !json.station) {
-          throw new Error((json && json.error) || "ไม่พบข้อมูลจริงจาก API");
-        }
-        return json;
+        return validateAndSanitizeApiPayload(json);
       } finally {
         clearTimeout(timer);
       }
@@ -1331,15 +1480,18 @@
 
       body.innerHTML = rows.map((d) => {
         const lv = classifyPM25(d.avg);
+        const safeHex = sanitizeHexColor(lv.hex);
+        const minText = d.min !== null ? Number(d.min).toFixed(1) : "—";
+        const maxText = d.max !== null ? Number(d.max).toFixed(1) : "—";
         return `
           <tr class="hover:bg-slate-50">
-            <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${formatThaiDateRow(d.date)}</td>
+            <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${escapeHtml(formatThaiDateRow(d.date))}</td>
             <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(d.stationName || d.stationID)} (${escapeHtml(d.stationID)})</td>
-            <td class="px-4 py-3 font-display font-bold text-base" style="color:${lv.hex}">${Number(d.avg).toFixed(1)}</td>
-            <td class="px-4 py-3 whitespace-nowrap">${Number(d.min).toFixed(1)} – ${Number(d.max).toFixed(1)} µg/m³</td>
-            <td class="px-4 py-3 whitespace-nowrap">${d.peakTime ? `${d.peakTime} น.` : "—"}</td>
-            <td class="px-4 py-3 whitespace-nowrap">${d.hoursCount || 0} ชม.</td>
-            <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${lv.label}</span></td>
+            <td class="px-4 py-3 font-display font-bold text-base" style="color:${safeHex}">${escapeHtml(Number(d.avg).toFixed(1))}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(minText)} – ${escapeHtml(maxText)} µg/m³</td>
+            <td class="px-4 py-3 whitespace-nowrap">${d.peakTime ? `${escapeHtml(d.peakTime)} น.` : "—"}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(String(d.hoursCount || 0))} ชม.</td>
+            <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${escapeHtml(lv.label)}</span></td>
           </tr>
         `;
       }).join("");
@@ -1349,16 +1501,25 @@
       const { invalid, rows } = getFilteredDailyRows();
       if (invalid || !rows.length) return;
 
-      const lines = [
-        ["วันที่", "รหัสสถานี", "ชื่อสถานี", "PM2.5 เฉลี่ย", "ต่ำสุด", "สูงสุด", "เวลาสูงสุด", "จำนวนชั่วโมง", "ระดับคุณภาพอากาศ"].join(",")
-      ];
+      const header = ["วันที่", "รหัสสถานี", "ชื่อสถานี", "PM2.5 เฉลี่ย", "ต่ำสุด", "สูงสุด", "เวลาสูงสุด", "จำนวนชั่วโมง", "ระดับคุณภาพอากาศ"];
+      const lines = [header.map(sanitizeCsvCell).join(",")];
       for (const d of rows) {
         const lv = classifyPM25(d.avg);
-        lines.push([d.date, d.stationID, `"${(d.stationName || "").replace(/"/g, '""')}"`, d.avg, d.min, d.max, d.peakTime || "", d.hoursCount || 0, `"${lv.label}"`].join(","));
+        lines.push([
+          sanitizeCsvCell(d.date),
+          sanitizeCsvCell(d.stationID),
+          sanitizeCsvCell(d.stationName || ""),
+          sanitizeCsvCell(d.avg),
+          sanitizeCsvCell(d.min),
+          sanitizeCsvCell(d.max),
+          sanitizeCsvCell(d.peakTime || ""),
+          sanitizeCsvCell(d.hoursCount || 0),
+          sanitizeCsvCell(lv.label)
+        ].join(","));
       }
 
-      const start = state.dateFilter.start;
-      const end = state.dateFilter.end;
+      const start = sanitizeDateYmd(state.dateFilter.start);
+      const end = sanitizeDateYmd(state.dateFilter.end);
       let filename = "phonsawan-pm25-daily-summary.csv";
       if (start && end && start === end) {
         filename = `phonsawan-pm25-daily-${start}.csv`;
@@ -1371,6 +1532,7 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
+      a.rel = "noopener noreferrer";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1383,6 +1545,14 @@
       const btn = document.getElementById("refreshBtn");
       const icon = document.getElementById("refreshIcon");
       const errBox = document.getElementById("errorBanner");
+
+      if (forceNoCache) {
+        const now = Date.now();
+        if (now - state.lastManualRefreshAt < MANUAL_REFRESH_COOLDOWN_MS) {
+          return;
+        }
+        state.lastManualRefreshAt = now;
+      }
 
       btn.disabled = true;
       icon.classList.add("spinning");
@@ -1399,10 +1569,10 @@
         renderHistoryTable();
 
         const ts = data.fetchedAt ? data.fetchedAt.replace("T", " ").slice(0, 19) : "";
-        document.getElementById("dataSourceTag").textContent = `แหล่งข้อมูล: Air4Thai (${ts})`;
-      } catch (err) {
+        document.getElementById("dataSourceTag").textContent = ts ? `แหล่งข้อมูล: Air4Thai (${ts})` : "แหล่งข้อมูล: Air4Thai";
+      } catch (_err) {
         document.getElementById("errorBannerText").textContent =
-          `ไม่สามารถเชื่อมต่อข้อมูลล่าสุดได้ในขณะนี้ (${err && err.message ? err.message : "Network Error"}) กรุณากดปุ่ม "รีเฟรชเรียลไทม์" อีกครั้ง`;
+          'ไม่สามารถเชื่อมต่อข้อมูลล่าสุดได้ในขณะนี้ กรุณารอสักครู่แล้วกดปุ่ม "รีเฟรชเรียลไทม์" อีกครั้ง';
         errBox.classList.remove("hidden");
         errBox.classList.add("flex");
       } finally {
@@ -1416,8 +1586,8 @@
       document.getElementById("exportCsvBtn").addEventListener("click", exportCurrentTableCsv);
 
       const handleDateInputChange = () => {
-        state.dateFilter.start = document.getElementById("exportStartDate").value || "";
-        state.dateFilter.end = document.getElementById("exportEndDate").value || "";
+        state.dateFilter.start = sanitizeDateYmd(document.getElementById("exportStartDate").value);
+        state.dateFilter.end = sanitizeDateYmd(document.getElementById("exportEndDate").value);
         state.dateFilter.preset = "custom";
         updatePresetButtonsUI("custom");
         renderHistoryTable();
@@ -1447,6 +1617,7 @@
       loadAndRender(false);
       setInterval(() => loadAndRender(false), 15 * 60 * 1000);
     });
+    })();
   </script>
 </body>
 </html>
