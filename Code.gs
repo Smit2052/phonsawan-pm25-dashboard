@@ -92,17 +92,17 @@ function fetchAndSaveAir4Thai() {
       savedAt,
       dataDate,
       dataTime,
-      st.stationID,
-      st.nameTH,
-      st.areaTH,
+      sanitizeSheetCell_(st.stationID),
+      sanitizeSheetCell_(st.nameTH),
+      sanitizeSheetCell_(st.areaTH),
       st.isFallback ? 'YES' : 'NO',
       st.pm25,
       st.aqi !== null ? st.aqi : '',
-      st.aqiParam || '',
+      sanitizeSheetCell_(st.aqiParam || ''),
       st.pm10 !== null ? st.pm10 : '',
       st.no2 !== null ? st.no2 : '',
       st.level.level,
-      st.level.label
+      sanitizeSheetCell_(st.level.label)
     ]]);
   }
 
@@ -136,19 +136,24 @@ function fetchAndSaveAir4Thai() {
  */
 function doGet(e) {
   const params = (e && e.parameter) ? e.parameter : {};
-  const nocache = params.nocache === '1' || params.nocache === 'true';
+  const requestedNoCache = params.nocache === '1' || params.nocache === 'true';
 
   try {
     const cache = CacheService.getScriptCache();
     const cacheKey = 'phonsawan_pm25_api_v2';
+    const rateKey = 'phonsawan_pm25_nocache_rl_v1';
 
-    if (!nocache) {
-      const cached = cache.get(cacheKey);
-      if (cached) {
-        return ContentService
-          .createTextOutput(cached)
-          .setMimeType(ContentService.MimeType.JSON);
-      }
+    // จำกัดความถี่ nocache เพื่อป้องกันการยิงซ้ำถี่เกินไป (อย่างน้อยห่างกัน 15 วินาที)
+    const allowBypass = requestedNoCache && !cache.get(rateKey);
+    const cached = cache.get(cacheKey);
+    if (cached && !allowBypass) {
+      return ContentService
+        .createTextOutput(cached)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (allowBypass) {
+      cache.put(rateKey, '1', 15);
     }
 
     const rawStations = fetchAir4ThaiStations_();
@@ -179,10 +184,11 @@ function doGet(e) {
       .createTextOutput(jsonStr)
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
+    Logger.log('doGet error: ' + (err && err.stack ? err.stack : String(err)));
     return ContentService
       .createTextOutput(JSON.stringify({
         ok: false,
-        error: err && err.message ? err.message : String(err),
+        error: 'ไม่สามารถดึงข้อมูลคุณภาพอากาศได้ในขณะนี้',
         fetchedAt: Utilities.formatDate(new Date(), CONFIG.TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss+07:00")
       }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -661,4 +667,18 @@ function formatCellTime_(val) {
     return Utilities.formatDate(val, CONFIG.TIMEZONE, 'HH:mm');
   }
   return String(val || '').trim().substring(0, 5);
+}
+
+/**
+ * ป้องกัน Spreadsheet Formula Injection (=, +, -, @) ก่อนบันทึกลง Google Sheets
+ */
+function sanitizeSheetCell_(val) {
+  const s = String(val === null || val === undefined ? '' : val)
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .substring(0, 200);
+  if (/^[=+\-@\t\r]/.test(s)) {
+    return "'" + s;
+  }
+  return s;
 }
