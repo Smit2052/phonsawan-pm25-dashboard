@@ -461,15 +461,52 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" id="exportCsvBtn" class="font-display inline-flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-2 rounded-xl transition">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <button type="button" id="exportCsvBtn" class="font-display inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white text-xs sm:text-sm font-medium px-3.5 py-2 rounded-xl shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            <span>ส่งออก CSV</span>
+            <span id="exportCsvBtnLabel">ส่งออก CSV</span>
           </button>
         </div>
+      </div>
+
+      <!-- แถบกำหนดช่วงวันที่สำหรับกรองตารางและส่งออก CSV -->
+      <div class="mb-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 max-w-xl">
+          <div>
+            <label for="exportStartDate" class="block font-display text-xs font-medium text-slate-600 mb-1">ตั้งแต่วันที่</label>
+            <input
+              type="date"
+              id="exportStartDate"
+              class="w-full font-display text-xs sm:text-sm bg-white border border-slate-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 outline-none rounded-xl px-3 py-2 text-slate-800 transition"
+            />
+          </div>
+          <div>
+            <label for="exportEndDate" class="block font-display text-xs font-medium text-slate-600 mb-1">ถึงวันที่</label>
+            <input
+              type="date"
+              id="exportEndDate"
+              class="w-full font-display text-xs sm:text-sm bg-white border border-slate-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 outline-none rounded-xl px-3 py-2 text-slate-800 transition"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between lg:justify-end gap-2">
+          <div class="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 gap-1" role="group" aria-label="เลือกช่วงเวลาด่วน">
+            <button type="button" class="date-preset-btn font-display text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-800 transition" data-days="all">ทั้งหมด</button>
+            <button type="button" class="date-preset-btn font-display text-xs font-medium px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 transition" data-days="7">7 วัน</button>
+            <button type="button" class="date-preset-btn font-display text-xs font-medium px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 transition" data-days="30">30 วัน</button>
+          </div>
+          <span id="filteredRowCount" class="font-display text-xs text-slate-600 bg-white border border-slate-200 px-3 py-2 rounded-xl whitespace-nowrap">
+            กำลังโหลด...
+          </span>
+        </div>
+      </div>
+
+      <div id="dateRangeError" class="hidden mb-3 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-display text-xs" role="alert">
+        วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด กรุณาตรวจสอบช่วงวันที่ที่เลือก
       </div>
 
       <div class="w-full overflow-x-auto rounded-2xl border border-slate-200">
@@ -680,8 +717,13 @@
     const state = {
       chart: null,
       chartMode: "daily",
-      tableSheet: "daily",
-      payload: null
+      payload: null,
+      dateFilter: {
+        start: "",
+        end: "",
+        preset: "all",
+        initialized: false
+      }
     };
 
     /* ================= Utilities ================= */
@@ -1148,12 +1190,110 @@
       });
     }
 
-    /* ================= Render Historical Data Table (Daily Summary) ================= */
+    /* ================= Render Historical Data Table (Daily Summary + Date Range Export) ================= */
+
+    function getAllDailyRows() {
+      const history = (state.payload && state.payload.history) ? state.payload.history : null;
+      return (history && Array.isArray(history.dailySummary)) ? history.dailySummary : [];
+    }
+
+    function shiftYmdDays(ymd, deltaDays) {
+      const [y, m, d] = ymd.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d + deltaDays));
+      const yy = dt.getUTCFullYear();
+      const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(dt.getUTCDate()).padStart(2, "0");
+      return `${yy}-${mm}-${dd}`;
+    }
+
+    function updatePresetButtonsUI(activeKey) {
+      document.querySelectorAll(".date-preset-btn").forEach((btn) => {
+        const isActive = btn.dataset.days === activeKey;
+        btn.className = isActive
+          ? "date-preset-btn font-display text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-800 transition"
+          : "date-preset-btn font-display text-xs font-medium px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 transition";
+      });
+    }
+
+    function syncDateRangeDefaults(dailyRows) {
+      const startInput = document.getElementById("exportStartDate");
+      const endInput = document.getElementById("exportEndDate");
+      if (!dailyRows.length) {
+        startInput.value = "";
+        endInput.value = "";
+        state.dateFilter.start = "";
+        state.dateFilter.end = "";
+        return;
+      }
+
+      const maxDate = dailyRows[0].date;
+      const minDate = dailyRows[dailyRows.length - 1].date;
+      startInput.min = minDate;
+      startInput.max = maxDate;
+      endInput.min = minDate;
+      endInput.max = maxDate;
+
+      if (!state.dateFilter.initialized) {
+        state.dateFilter.start = minDate;
+        state.dateFilter.end = maxDate;
+        state.dateFilter.preset = "all";
+        state.dateFilter.initialized = true;
+      } else if (state.dateFilter.preset === "all") {
+        state.dateFilter.start = minDate;
+        state.dateFilter.end = maxDate;
+      } else if (state.dateFilter.preset === "7" || state.dateFilter.preset === "30") {
+        const days = Number(state.dateFilter.preset);
+        const targetStart = shiftYmdDays(maxDate, -(days - 1));
+        state.dateFilter.start = targetStart < minDate ? minDate : targetStart;
+        state.dateFilter.end = maxDate;
+      }
+
+      startInput.value = state.dateFilter.start;
+      endInput.value = state.dateFilter.end;
+      updatePresetButtonsUI(state.dateFilter.preset);
+    }
+
+    function applyDatePreset(presetKey) {
+      const dailyRows = getAllDailyRows();
+      if (!dailyRows.length) return;
+      const maxDate = dailyRows[0].date;
+      const minDate = dailyRows[dailyRows.length - 1].date;
+
+      state.dateFilter.preset = presetKey;
+      if (presetKey === "all") {
+        state.dateFilter.start = minDate;
+        state.dateFilter.end = maxDate;
+      } else {
+        const days = Number(presetKey);
+        const targetStart = shiftYmdDays(maxDate, -(days - 1));
+        state.dateFilter.start = targetStart < minDate ? minDate : targetStart;
+        state.dateFilter.end = maxDate;
+      }
+
+      document.getElementById("exportStartDate").value = state.dateFilter.start;
+      document.getElementById("exportEndDate").value = state.dateFilter.end;
+      updatePresetButtonsUI(presetKey);
+      renderHistoryTable();
+    }
+
+    function getFilteredDailyRows() {
+      const allRows = getAllDailyRows();
+      const start = state.dateFilter.start;
+      const end = state.dateFilter.end;
+      if (start && end && start > end) {
+        return { invalid: true, rows: [] };
+      }
+      const rows = allRows.filter((d) => (!start || d.date >= start) && (!end || d.date <= end));
+      return { invalid: false, rows };
+    }
 
     function renderHistoryTable() {
       const head = document.getElementById("historyTableHead");
       const body = document.getElementById("historyTableBody");
-      const history = (state.payload && state.payload.history) ? state.payload.history : null;
+      const errEl = document.getElementById("dateRangeError");
+      const countEl = document.getElementById("filteredRowCount");
+      const exportBtn = document.getElementById("exportCsvBtn");
+      const exportLabel = document.getElementById("exportCsvBtnLabel");
 
       document.getElementById("tableSubtitle").textContent = "สรุปค่าเฉลี่ย ต่ำสุด–สูงสุด และระดับคุณภาพอากาศรายวัน (เรียงจากวันล่าสุด)";
       head.innerHTML = `
@@ -1167,11 +1307,28 @@
           <th class="px-4 py-3 whitespace-nowrap">ระดับคุณภาพอากาศ</th>
         </tr>
       `;
-      const rows = (history && Array.isArray(history.dailySummary)) ? history.dailySummary : [];
-      if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ยังไม่มีข้อมูลประวัติย้อนหลัง</td></tr>`;
+
+      const { invalid, rows } = getFilteredDailyRows();
+
+      if (invalid) {
+        errEl.classList.remove("hidden");
+        countEl.textContent = "ช่วงวันที่ไม่ถูกต้อง";
+        exportBtn.disabled = true;
+        exportLabel.textContent = "ส่งออก CSV";
+        body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-amber-700">วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด กรุณาเลือกช่วงวันที่ใหม่</td></tr>`;
         return;
       }
+
+      errEl.classList.add("hidden");
+      countEl.textContent = rows.length > 0 ? `พบข้อมูล ${rows.length} วัน` : "ไม่พบข้อมูลในช่วงที่เลือก";
+      exportBtn.disabled = rows.length === 0;
+      exportLabel.textContent = rows.length > 0 ? `ส่งออก CSV (${rows.length} วัน)` : "ส่งออก CSV";
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ไม่พบข้อมูลประวัติย้อนหลังในช่วงวันที่ที่เลือก</td></tr>`;
+        return;
+      }
+
       body.innerHTML = rows.map((d) => {
         const lv = classifyPM25(d.avg);
         return `
@@ -1189,21 +1346,31 @@
     }
 
     function exportCurrentTableCsv() {
-      const history = state.payload && state.payload.history;
-      if (!history) return;
+      const { invalid, rows } = getFilteredDailyRows();
+      if (invalid || !rows.length) return;
+
       const lines = [
         ["วันที่", "รหัสสถานี", "ชื่อสถานี", "PM2.5 เฉลี่ย", "ต่ำสุด", "สูงสุด", "เวลาสูงสุด", "จำนวนชั่วโมง", "ระดับคุณภาพอากาศ"].join(",")
       ];
-      for (const d of (history.dailySummary || [])) {
+      for (const d of rows) {
         const lv = classifyPM25(d.avg);
         lines.push([d.date, d.stationID, `"${(d.stationName || "").replace(/"/g, '""')}"`, d.avg, d.min, d.max, d.peakTime || "", d.hoursCount || 0, `"${lv.label}"`].join(","));
+      }
+
+      const start = state.dateFilter.start;
+      const end = state.dateFilter.end;
+      let filename = "phonsawan-pm25-daily-summary.csv";
+      if (start && end && start === end) {
+        filename = `phonsawan-pm25-daily-${start}.csv`;
+      } else if (start && end) {
+        filename = `phonsawan-pm25-daily-${start}_to_${end}.csv`;
       }
 
       const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "phonsawan-pm25-daily-summary.csv";
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1228,6 +1395,7 @@
         renderHeroAndSide(data);
         renderAdvisories(data.station);
         renderChartView(state.chartMode);
+        syncDateRangeDefaults(getAllDailyRows());
         renderHistoryTable();
 
         const ts = data.fetchedAt ? data.fetchedAt.replace("T", " ").slice(0, 19) : "";
@@ -1246,6 +1414,20 @@
     function initEvents() {
       document.getElementById("refreshBtn").addEventListener("click", () => loadAndRender(true));
       document.getElementById("exportCsvBtn").addEventListener("click", exportCurrentTableCsv);
+
+      const handleDateInputChange = () => {
+        state.dateFilter.start = document.getElementById("exportStartDate").value || "";
+        state.dateFilter.end = document.getElementById("exportEndDate").value || "";
+        state.dateFilter.preset = "custom";
+        updatePresetButtonsUI("custom");
+        renderHistoryTable();
+      };
+      document.getElementById("exportStartDate").addEventListener("change", handleDateInputChange);
+      document.getElementById("exportEndDate").addEventListener("change", handleDateInputChange);
+
+      document.querySelectorAll(".date-preset-btn").forEach((btn) => {
+        btn.addEventListener("click", () => applyDatePreset(btn.dataset.days));
+      });
 
       document.querySelectorAll(".chart-tab-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
