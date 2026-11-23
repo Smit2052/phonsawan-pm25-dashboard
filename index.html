@@ -111,7 +111,7 @@
               ระบบเฝ้าระวังคุณภาพอากาศและฝุ่นละออง PM 2.5 <span class="whitespace-nowrap">โรงพยาบาลโพนสวรรค์</span>
             </h1>
             <p class="text-sm text-white/85 mt-0.5">
-              กลุ่มงานอาชีวเวชกรรมและสิ่งแวดล้อม • ข้อมูลจริงจาก Air4Thai (กรมควบคุมมลพิษ) และฐานข้อมูล Google Sheets
+              กลุ่มงานอาชีวเวชกรรมและสิ่งแวดล้อม • แหล่งข้อมูลจาก Air4Thai (กรมควบคุมมลพิษ)
             </p>
           </div>
         </div>
@@ -257,7 +257,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <div class="grid grid-cols-3 gap-2.5">
             <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
               <div class="font-display text-xs font-semibold text-slate-500">PM 10</div>
               <div id="valPM10" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
@@ -266,21 +266,6 @@
             <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
               <div class="font-display text-xs font-semibold text-slate-500">NO₂</div>
               <div id="valNO2" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
-              <div class="text-[11px] text-slate-500">ppb</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
-              <div class="font-display text-xs font-semibold text-slate-500">O₃</div>
-              <div id="valO3" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
-              <div class="text-[11px] text-slate-500">ppb</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
-              <div class="font-display text-xs font-semibold text-slate-500">CO</div>
-              <div id="valCO" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
-              <div class="text-[11px] text-slate-500">ppm</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
-              <div class="font-display text-xs font-semibold text-slate-500">SO₂</div>
-              <div id="valSO2" class="font-display text-lg font-semibold text-slate-900 mt-0.5">--</div>
               <div class="text-[11px] text-slate-500">ppb</div>
             </div>
             <div class="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
@@ -405,8 +390,8 @@
       </div>
     </section>
 
-    <!-- ==================== Row 3: Real Trend Chart (Daily / Weekly / Monthly / Yearly) ==================== -->
-    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="กราฟแนวโน้มค่า PM 2.5 จากฐานข้อมูลจริง Google Sheets">
+    <!-- ==================== Row 3: Trend Chart (Daily / Weekly / Monthly / Yearly) ==================== -->
+    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="กราฟแนวโน้มค่าฝุ่น PM 2.5 จากฐานข้อมูล">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0" aria-hidden="true">
@@ -415,8 +400,8 @@
             </svg>
           </div>
           <div>
-            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">กราฟแนวโน้มค่าฝุ่น PM 2.5 <span class="whitespace-nowrap">จากฐานข้อมูลจริง</span></h2>
-            <p id="chartSubtitle" class="text-xs sm:text-sm text-slate-500">แสดงเฉพาะข้อมูลจริงที่บันทึกสะสมใน Google Sheets (ไม่มีข้อมูลจำลอง)</p>
+            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">กราฟแนวโน้มค่าฝุ่น PM 2.5 <span class="whitespace-nowrap">จากฐานข้อมูล</span></h2>
+            <p id="chartSubtitle" class="text-xs sm:text-sm text-slate-500">แสดงแนวโน้มค่าฝุ่น PM 2.5 รายวัน รายสัปดาห์ รายเดือน และรายปี</p>
           </div>
         </div>
 
@@ -429,51 +414,36 @@
         </div>
       </div>
 
-      <!-- แถบแจ้งสถานะข้อมูลจริงจาก Google Sheets (โปร่งใส 100% ไม่มีข้อมูลจำลอง) -->
-      <div id="realDataNotice" class="mb-4 flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-teal-50/80 border border-teal-200/80 text-teal-900 text-xs sm:text-sm">
-        <svg class="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 text-teal-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <div id="realDataNoticeText">กำลังตรวจสอบจำนวนบันทึกข้อมูลจริงจาก Google Sheets...</div>
-      </div>
-
-      <!-- KPI Strip from Real DB -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <!-- KPI Strip -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
-          <div class="font-display text-xs text-slate-500">ค่าเฉลี่ยจริงในมุมมองนี้</div>
+          <div class="font-display text-xs text-slate-500">ค่าเฉลี่ยในมุมมองนี้</div>
           <div id="kpiAvg" class="font-display text-xl font-bold text-slate-900 mt-0.5">--</div>
           <div id="kpiAvgNote" class="text-xs text-slate-500">µg/m³</div>
         </div>
         <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
-          <div class="font-display text-xs text-slate-500">ค่าสูงสุดจริงในมุมมองนี้</div>
+          <div class="font-display text-xs text-slate-500">ค่าสูงสุดในมุมมองนี้</div>
           <div id="kpiMax" class="font-display text-xl font-bold text-slate-900 mt-0.5">--</div>
           <div id="kpiMaxNote" class="text-xs text-slate-500">--</div>
         </div>
         <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
-          <div class="font-display text-xs text-slate-500">ค่าต่ำสุดจริงในมุมมองนี้</div>
+          <div class="font-display text-xs text-slate-500">ค่าต่ำสุดในมุมมองนี้</div>
           <div id="kpiMin" class="font-display text-xl font-bold text-slate-900 mt-0.5">--</div>
           <div id="kpiMinNote" class="text-xs text-slate-500">--</div>
-        </div>
-        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
-          <div class="font-display text-xs text-slate-500">บันทึกสะสมใน Google Sheets</div>
-          <div id="kpiRecords" class="font-display text-xl font-bold text-teal-700 mt-0.5">--</div>
-          <div id="kpiRecordsNote" class="text-xs text-slate-500">เก็บอัตโนมัติทุก 1 ชม.</div>
         </div>
       </div>
 
       <div class="relative w-full h-[280px] sm:h-[320px]">
-        <canvas id="pm25Chart" aria-label="กราฟแสดงแนวโน้มค่าฝุ่น PM 2.5 จริง"></canvas>
+        <canvas id="pm25Chart" aria-label="กราฟแสดงแนวโน้มค่าฝุ่น PM 2.5"></canvas>
         <div id="chartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-slate-50/90 rounded-2xl border border-dashed border-slate-300">
-          <p class="font-display text-sm font-semibold text-slate-700">ยังไม่มีข้อมูลประวัติใน Google Sheets สำหรับช่วงเวลานี้</p>
-          <p class="text-xs text-slate-500 mt-1">ระบบตั้งเวลาบันทึกอัตโนมัติทุก 1 ชั่วโมง ข้อมูลจริงจะแสดงทันทีเมื่อมีการบันทึก</p>
+          <p class="font-display text-sm font-semibold text-slate-700">ยังไม่มีข้อมูลประวัติสำหรับช่วงเวลานี้</p>
+          <p class="text-xs text-slate-500 mt-1">ระบบตั้งเวลาบันทึกอัตโนมัติทุก 1 ชั่วโมง ข้อมูลจะแสดงทันทีเมื่อมีการบันทึก</p>
         </div>
       </div>
     </section>
 
-    <!-- ==================== Row 4: Real Historical Data Table from Google Sheets ==================== -->
-    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="ตารางประวัติข้อมูลจริงจาก Google Sheets">
+    <!-- ==================== Row 4: Historical Data Table ==================== -->
+    <section class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm" aria-label="ตารางประวัติข้อมูลย้อนหลัง">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0" aria-hidden="true">
@@ -485,16 +455,12 @@
             </svg>
           </div>
           <div>
-            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">ตารางประวัติข้อมูลจริงจาก Google Sheets</h2>
-            <p id="tableSubtitle" class="text-xs sm:text-sm text-slate-500">แสดงบันทึกจริงจากชีต Daily_Summary และ Hourly_Logs</p>
+            <h2 class="font-display text-base sm:text-lg font-semibold text-slate-900">ตารางประวัติข้อมูลย้อนหลัง</h2>
+            <p id="tableSubtitle" class="text-xs sm:text-sm text-slate-500">สรุปค่าเฉลี่ย ต่ำสุด–สูงสุด และระดับคุณภาพอากาศรายวัน</p>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <div class="inline-flex bg-slate-100 p-1 rounded-xl gap-1" role="tablist" aria-label="เลือกชีตตาราง">
-            <button type="button" class="table-tab-btn font-display text-xs font-semibold px-3 py-1.5 rounded-lg bg-white text-teal-800 shadow-sm" data-sheet="daily" role="tab" aria-selected="true">สรุปรายวัน</button>
-            <button type="button" class="table-tab-btn font-display text-xs font-medium px-3 py-1.5 rounded-lg text-slate-600" data-sheet="hourly" role="tab" aria-selected="false">บันทึกรายชั่วโมง</button>
-          </div>
           <button type="button" id="exportCsvBtn" class="font-display inline-flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-2 rounded-xl transition">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -511,7 +477,7 @@
           <thead id="historyTableHead" class="bg-slate-50 border-b border-slate-200 font-display text-xs font-semibold text-slate-600"></thead>
           <tbody id="historyTableBody" class="divide-y divide-slate-100 text-slate-800">
             <tr>
-              <td colspan="7" class="text-center py-8 text-slate-500">กำลังโหลดข้อมูลจริงจาก Google Sheets...</td>
+              <td colspan="7" class="text-center py-8 text-slate-500">กำลังโหลดข้อมูลประวัติย้อนหลัง...</td>
             </tr>
           </tbody>
         </table>
@@ -523,11 +489,11 @@
   <footer class="bg-white border-t border-slate-200 py-4 mt-4">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-slate-500">
       <div>
-        <strong class="text-slate-700">โรงพยาบาลโพนสวรรค์ จังหวัดนครพนม</strong> • ระบบเฝ้าระวังคุณภาพอากาศและฝุ่น PM 2.5 (ข้อมูลจริง 100% ไม่มีข้อมูลจำลอง)
+        <strong class="text-slate-700">โรงพยาบาลโพนสวรรค์ จังหวัดนครพนม</strong> • ระบบเฝ้าระวังคุณภาพอากาศและฝุ่น PM 2.5
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <span id="dataSourceTag" class="font-display text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">
-          แหล่งข้อมูล: Air4Thai + Google Sheets (GAS)
+          แหล่งข้อมูล: Air4Thai (กรมควบคุมมลพิษ)
         </span>
         <span class="font-display text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
           รีเฟรชอัตโนมัติทุก 15 นาที
@@ -860,9 +826,6 @@
       const fmt = (v) => (v !== null && v !== undefined && v !== "" ? String(v) : "—");
       document.getElementById("valPM10").textContent = fmt(st.pm10);
       document.getElementById("valNO2").textContent = fmt(st.no2);
-      document.getElementById("valO3").textContent = fmt(st.o3);
-      document.getElementById("valCO").textContent = fmt(st.co);
-      document.getElementById("valSO2").textContent = fmt(st.so2);
       document.getElementById("valPM25AQI").textContent = fmt(st.pm25Aqi);
 
       // สถานีใกล้เคียง
@@ -981,26 +944,6 @@
     function renderChartView(mode) {
       state.chartMode = mode;
       const history = (state.payload && state.payload.history) ? state.payload.history : null;
-      const stats = (history && history.stats) ? history.stats : { totalHourlyRecords: 0, totalDaysRecorded: 0, firstDate: null, lastDate: null };
-
-      // อัปเดตแถบแจ้งสถานะข้อมูลจริงจาก Google Sheets อย่างโปร่งใส
-      const noticeEl = document.getElementById("realDataNoticeText");
-      if (stats.totalHourlyRecords === 0) {
-        noticeEl.innerHTML =
-          `<strong>สถานะฐานข้อมูล Google Sheets:</strong> ยังไม่พบบันทึกประวัติย้อนหลัง ระบบจะเริ่มบันทึกข้อมูลจริงทุก 1 ชั่วโมงอัตโนมัติ (ไม่มีการสร้างข้อมูลจำลอง)`;
-      } else {
-        const startLabel = stats.firstDate ? formatThaiDateRow(stats.firstDate) : "--";
-        const extraNote = stats.totalDaysRecorded <= 1
-          ? " — เนื่องจากเพิ่งเริ่มเก็บข้อมูลวันแรก กราฟจึงพล็อตเฉพาะจุดข้อมูลจริงเท่าที่บันทึกไว้ และจะสะสมข้อมูลจริงเพิ่มอัตโนมัติทุก 1 ชั่วโมง (ไม่มีข้อมูลจำลอง)"
-          : " — พล็อตเฉพาะข้อมูลจริงที่เก็บสะสมใน Google Sheets ไม่มีการเติมข้อมูลจำลอง";
-        noticeEl.innerHTML =
-          `<strong>ฐานข้อมูลจริง Google Sheets:</strong> เก็บสะสมแล้ว <strong>${stats.totalHourlyRecords} รายการรายชั่วโมง</strong> / <strong>${stats.totalDaysRecorded} วัน</strong> (เริ่มบันทึก ${startLabel})${extraNote}`;
-      }
-
-      document.getElementById("kpiRecords").textContent = `${stats.totalHourlyRecords} ชม. / ${stats.totalDaysRecorded} วัน`;
-      document.getElementById("kpiRecordsNote").textContent = stats.firstDate
-        ? `เริ่มเก็บตั้งแต่ ${formatThaiDateRow(stats.firstDate)}`
-        : "รอการบันทึกรอบแรก";
 
       let labels = [];
       let values = [];
@@ -1018,7 +961,7 @@
         }));
         const dayStr = list.length ? formatThaiDateRow(list[0].date) : "วันนี้";
         document.getElementById("chartSubtitle").textContent =
-          `มุมมองรายวัน (${dayStr}) — ข้อมูลรายชั่วโมงจริงจากชีต Hourly_Logs (${list.length} จุดข้อมูล)`;
+          `มุมมองรายวัน (${dayStr}) — แนวโน้มรายชั่วโมง (${list.length} จุดข้อมูล)`;
       } else if (mode === "weekly") {
         const list = (history && Array.isArray(history.weekly)) ? history.weekly : [];
         chartType = "bar";
@@ -1032,7 +975,7 @@
           detail: `${classifyPM25(d.avg).label} | ต่ำสุด ${d.min} – สูงสุด ${d.max} µg/m³ (${d.hoursCount} ชม.)`
         }));
         document.getElementById("chartSubtitle").textContent =
-          `มุมมองรายสัปดาห์ (ย้อนหลังไม่เกิน 7 วัน) — ค่าเฉลี่ยรายวันจริงจากชีต Daily_Summary (${list.length} วันที่มีข้อมูล)`;
+          `มุมมองรายสัปดาห์ (ย้อนหลังไม่เกิน 7 วัน) — ค่าเฉลี่ยรายวัน (${list.length} วัน)`;
       } else if (mode === "monthly") {
         const list = (history && Array.isArray(history.monthly)) ? history.monthly : [];
         chartType = list.length >= 7 ? "line" : "bar";
@@ -1046,7 +989,7 @@
           detail: `${classifyPM25(d.avg).label} | ต่ำสุด ${d.min} – สูงสุด ${d.max} µg/m³ (${d.hoursCount} ชม.)`
         }));
         document.getElementById("chartSubtitle").textContent =
-          `มุมมองรายเดือน (ย้อนหลังไม่เกิน 30 วัน) — ค่าเฉลี่ยรายวันจริงจากชีต Daily_Summary (${list.length} วันที่มีข้อมูล)`;
+          `มุมมองรายเดือน (ย้อนหลังไม่เกิน 30 วัน) — ค่าเฉลี่ยรายวัน (${list.length} วัน)`;
       } else {
         const list = (history && Array.isArray(history.yearly)) ? history.yearly : [];
         chartType = "bar";
@@ -1054,10 +997,10 @@
         values = list.map((m) => Number(m.avg));
         metaNotes = list.map((m) => ({
           title: `เดือน ${formatThaiMonth(m.month)}`,
-          detail: `${classifyPM25(m.avg).label} | เฉลี่ยจากข้อมูลจริง ${m.daysCount} วัน (ต่ำสุด ${m.min} – สูงสุด ${m.max})`
+          detail: `${classifyPM25(m.avg).label} | เฉลี่ยจากข้อมูล ${m.daysCount} วัน (ต่ำสุด ${m.min} – สูงสุด ${m.max})`
         }));
         document.getElementById("chartSubtitle").textContent =
-          `มุมมองรายปี (รอบ 12 เดือน) — ค่าเฉลี่ยรายเดือนจริงคำนวณจากชีต Daily_Summary (${list.length} เดือนที่มีข้อมูล)`;
+          `มุมมองรายปี (รอบ 12 เดือน) — ค่าเฉลี่ยรายเดือน (${list.length} เดือน)`;
       }
 
       // อัปเดต KPI ในมุมมองปัจจุบัน
@@ -1205,109 +1148,62 @@
       });
     }
 
-    /* ================= Render Real History Table ================= */
+    /* ================= Render Historical Data Table (Daily Summary) ================= */
 
-    function renderHistoryTable(sheetMode) {
-      state.tableSheet = sheetMode;
+    function renderHistoryTable() {
       const head = document.getElementById("historyTableHead");
       const body = document.getElementById("historyTableBody");
       const history = (state.payload && state.payload.history) ? state.payload.history : null;
 
-      if (sheetMode === "daily") {
-        document.getElementById("tableSubtitle").textContent = "ข้อมูลจริงจากชีต Daily_Summary ใน Google Sheets (เรียงจากวันล่าสุด)";
-        head.innerHTML = `
-          <tr>
-            <th class="px-4 py-3 whitespace-nowrap">วันที่</th>
-            <th class="px-4 py-3 whitespace-nowrap">สถานีตรวจวัด</th>
-            <th class="px-4 py-3 whitespace-nowrap">PM 2.5 เฉลี่ย (µg/m³)</th>
-            <th class="px-4 py-3 whitespace-nowrap">ต่ำสุด – สูงสุด</th>
-            <th class="px-4 py-3 whitespace-nowrap">เวลาสูงสุด</th>
-            <th class="px-4 py-3 whitespace-nowrap">ชั่วโมงที่เก็บได้</th>
-            <th class="px-4 py-3 whitespace-nowrap">ระดับคุณภาพอากาศ</th>
-          </tr>
-        `;
-        const rows = (history && Array.isArray(history.dailySummary)) ? history.dailySummary : [];
-        if (!rows.length) {
-          body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ยังไม่มีข้อมูลในชีต Daily_Summary</td></tr>`;
-          return;
-        }
-        body.innerHTML = rows.map((d) => {
-          const lv = classifyPM25(d.avg);
-          return `
-            <tr class="hover:bg-slate-50">
-              <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${formatThaiDateRow(d.date)}</td>
-              <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(d.stationName || d.stationID)} (${escapeHtml(d.stationID)})</td>
-              <td class="px-4 py-3 font-display font-bold text-base" style="color:${lv.hex}">${Number(d.avg).toFixed(1)}</td>
-              <td class="px-4 py-3 whitespace-nowrap">${Number(d.min).toFixed(1)} – ${Number(d.max).toFixed(1)} µg/m³</td>
-              <td class="px-4 py-3 whitespace-nowrap">${d.peakTime ? `${d.peakTime} น.` : "—"}</td>
-              <td class="px-4 py-3 whitespace-nowrap">${d.hoursCount || 0} ชม.</td>
-              <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${lv.label}</span></td>
-            </tr>
-          `;
-        }).join("");
-      } else {
-        document.getElementById("tableSubtitle").textContent = "ข้อมูลจริงจากชีต Hourly_Logs ใน Google Sheets (เรียงจากชั่วโมงล่าสุด)";
-        head.innerHTML = `
-          <tr>
-            <th class="px-4 py-3 whitespace-nowrap">วันที่ – เวลาข้อมูล</th>
-            <th class="px-4 py-3 whitespace-nowrap">สถานีตรวจวัด</th>
-            <th class="px-4 py-3 whitespace-nowrap">PM 2.5 (µg/m³)</th>
-            <th class="px-4 py-3 whitespace-nowrap">AQI</th>
-            <th class="px-4 py-3 whitespace-nowrap">PM 10 / NO₂</th>
-            <th class="px-4 py-3 whitespace-nowrap">ระดับคุณภาพอากาศ</th>
-            <th class="px-4 py-3 whitespace-nowrap">เวลาที่บันทึกลงชีต</th>
-          </tr>
-        `;
-        const rows = (history && Array.isArray(history.hourlyLogs)) ? history.hourlyLogs : [];
-        if (!rows.length) {
-          body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ยังไม่มีข้อมูลในชีต Hourly_Logs</td></tr>`;
-          return;
-        }
-        body.innerHTML = rows.map((h) => {
-          const lv = classifyPM25(h.pm25);
-          const extraPoll = `${h.pm10 !== null ? h.pm10 : "—"} / ${h.no2 !== null ? h.no2 : "—"}`;
-          return `
-            <tr class="hover:bg-slate-50">
-              <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${formatThaiDateTime(h.date, h.time)}</td>
-              <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(h.stationName || h.stationID)} (${escapeHtml(h.stationID)})</td>
-              <td class="px-4 py-3 font-display font-bold text-base" style="color:${lv.hex}">${Number(h.pm25).toFixed(1)}</td>
-              <td class="px-4 py-3 font-display font-semibold">${h.aqi !== null ? h.aqi : "—"}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-slate-600">${extraPoll}</td>
-              <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${lv.label}</span></td>
-              <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500">${escapeHtml(h.savedAt || "—")}</td>
-            </tr>
-          `;
-        }).join("");
+      document.getElementById("tableSubtitle").textContent = "สรุปค่าเฉลี่ย ต่ำสุด–สูงสุด และระดับคุณภาพอากาศรายวัน (เรียงจากวันล่าสุด)";
+      head.innerHTML = `
+        <tr>
+          <th class="px-4 py-3 whitespace-nowrap">วันที่</th>
+          <th class="px-4 py-3 whitespace-nowrap">สถานีตรวจวัด</th>
+          <th class="px-4 py-3 whitespace-nowrap">PM 2.5 เฉลี่ย (µg/m³)</th>
+          <th class="px-4 py-3 whitespace-nowrap">ต่ำสุด – สูงสุด</th>
+          <th class="px-4 py-3 whitespace-nowrap">เวลาสูงสุด</th>
+          <th class="px-4 py-3 whitespace-nowrap">ชั่วโมงที่เก็บได้</th>
+          <th class="px-4 py-3 whitespace-nowrap">ระดับคุณภาพอากาศ</th>
+        </tr>
+      `;
+      const rows = (history && Array.isArray(history.dailySummary)) ? history.dailySummary : [];
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">ยังไม่มีข้อมูลประวัติย้อนหลัง</td></tr>`;
+        return;
       }
+      body.innerHTML = rows.map((d) => {
+        const lv = classifyPM25(d.avg);
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 font-display font-medium whitespace-nowrap">${formatThaiDateRow(d.date)}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(d.stationName || d.stationID)} (${escapeHtml(d.stationID)})</td>
+            <td class="px-4 py-3 font-display font-bold text-base" style="color:${lv.hex}">${Number(d.avg).toFixed(1)}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${Number(d.min).toFixed(1)} – ${Number(d.max).toFixed(1)} µg/m³</td>
+            <td class="px-4 py-3 whitespace-nowrap">${d.peakTime ? `${d.peakTime} น.` : "—"}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${d.hoursCount || 0} ชม.</td>
+            <td class="px-4 py-3 whitespace-nowrap"><span class="font-display text-xs font-semibold px-2.5 py-1 rounded-full ${lv.pillClasses}">${lv.label}</span></td>
+          </tr>
+        `;
+      }).join("");
     }
 
     function exportCurrentTableCsv() {
       const history = state.payload && state.payload.history;
       if (!history) return;
-      let lines = [];
-      let filename = "";
-
-      if (state.tableSheet === "daily") {
-        lines.push(["วันที่", "รหัสสถานี", "ชื่อสถานี", "PM2.5 เฉลี่ย", "ต่ำสุด", "สูงสุด", "เวลาสูงสุด", "จำนวนชั่วโมง", "ระดับคุณภาพอากาศ"].join(","));
-        for (const d of (history.dailySummary || [])) {
-          const lv = classifyPM25(d.avg);
-          lines.push([d.date, d.stationID, `"${(d.stationName || "").replace(/"/g, '""')}"`, d.avg, d.min, d.max, d.peakTime || "", d.hoursCount || 0, `"${lv.label}"`].join(","));
-        }
-        filename = "phonsawan-pm25-daily-summary.csv";
-      } else {
-        lines.push(["วันที่", "เวลา", "รหัสสถานี", "ชื่อสถานี", "PM2.5", "AQI", "PM10", "NO2", "ระดับคุณภาพอากาศ", "เวลาที่บันทึก"].join(","));
-        for (const h of (history.hourlyLogs || [])) {
-          const lv = classifyPM25(h.pm25);
-          lines.push([h.date, h.time, h.stationID, `"${(h.stationName || "").replace(/"/g, '""')}"`, h.pm25, h.aqi ?? "", h.pm10 ?? "", h.no2 ?? "", `"${lv.label}"`, `"${h.savedAt || ""}"`].join(","));
-        }
-        filename = "phonsawan-pm25-hourly-logs.csv";
+      const lines = [
+        ["วันที่", "รหัสสถานี", "ชื่อสถานี", "PM2.5 เฉลี่ย", "ต่ำสุด", "สูงสุด", "เวลาสูงสุด", "จำนวนชั่วโมง", "ระดับคุณภาพอากาศ"].join(",")
+      ];
+      for (const d of (history.dailySummary || [])) {
+        const lv = classifyPM25(d.avg);
+        lines.push([d.date, d.stationID, `"${(d.stationName || "").replace(/"/g, '""')}"`, d.avg, d.min, d.max, d.peakTime || "", d.hoursCount || 0, `"${lv.label}"`].join(","));
       }
 
       const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename;
+      a.download = "phonsawan-pm25-daily-summary.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1332,13 +1228,13 @@
         renderHeroAndSide(data);
         renderAdvisories(data.station);
         renderChartView(state.chartMode);
-        renderHistoryTable(state.tableSheet);
+        renderHistoryTable();
 
         const ts = data.fetchedAt ? data.fetchedAt.replace("T", " ").slice(0, 19) : "";
-        document.getElementById("dataSourceTag").textContent = `แหล่งข้อมูลจริง: Air4Thai + Google Sheets (${ts})`;
+        document.getElementById("dataSourceTag").textContent = `แหล่งข้อมูล: Air4Thai (${ts})`;
       } catch (err) {
         document.getElementById("errorBannerText").textContent =
-          `ไม่สามารถเชื่อมต่อ Google Apps Script Web App ได้ในขณะนี้ (${err && err.message ? err.message : "Network Error"}) กรุณากดปุ่ม "รีเฟรชเรียลไทม์" อีกครั้ง`;
+          `ไม่สามารถเชื่อมต่อข้อมูลล่าสุดได้ในขณะนี้ (${err && err.message ? err.message : "Network Error"}) กรุณากดปุ่ม "รีเฟรชเรียลไทม์" อีกครั้ง`;
         errBox.classList.remove("hidden");
         errBox.classList.add("flex");
       } finally {
@@ -1360,18 +1256,6 @@
           btn.className = "chart-tab-btn font-display text-xs sm:text-sm font-semibold px-2.5 sm:px-3.5 py-2 rounded-lg bg-white text-teal-800 shadow-sm transition whitespace-nowrap";
           btn.setAttribute("aria-selected", "true");
           renderChartView(btn.dataset.mode);
-        });
-      });
-
-      document.querySelectorAll(".table-tab-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll(".table-tab-btn").forEach((b) => {
-            b.className = "table-tab-btn font-display text-xs font-medium px-3 py-1.5 rounded-lg text-slate-600";
-            b.setAttribute("aria-selected", "false");
-          });
-          btn.className = "table-tab-btn font-display text-xs font-semibold px-3 py-1.5 rounded-lg bg-white text-teal-800 shadow-sm";
-          btn.setAttribute("aria-selected", "true");
-          renderHistoryTable(btn.dataset.sheet);
         });
       });
     }
