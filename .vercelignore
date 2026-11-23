@@ -1,0 +1,7 @@
+# Prevent backend source files and documentation from being exposed on Vercel static hosting
+Code.gs
+*.gs
+README.md
+*.md
+.git
+.gitignore
